@@ -15,6 +15,7 @@ async def vidmark(the_media, message, working_dir, watermark_path, output_vid, t
         "-filter_complex", f"[1][0]scale2ref=w='iw*{size}/100':h='ow/mdar'[wm][vid];[vid][wm]overlay={position}", "-preset", mode, "-codec:a", "copy", output_vid
     ]
     COMPRESSION_START_TIME = time.time()
+    print(file_genertor_command)
     process = await asyncio.create_subprocess_exec(
         *file_genertor_command,
         stdout=asyncio.subprocess.PIPE,
@@ -61,7 +62,7 @@ async def vidmark(the_media, message, working_dir, watermark_path, output_vid, t
             try:
                 await message.edit(text=stats)
             except FloodWait as e:
-                await asyncio.sleep(e.value)
+                await asyncio.sleep(e.x)
                 pass
             except:
                 pass
