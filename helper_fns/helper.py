@@ -4,6 +4,7 @@ from time import time
 from config import botStartTime
 from os import remove
 from shutil import rmtree
+from asyncio import get_event_loop
 
 
 db = Database()
@@ -154,3 +155,10 @@ async def delete_all(dir):
         rmtree(dir)
     except Exception as e:
         print(e)
+        
+        
+########Background#############
+
+async def create_backgroud_task(x):
+    task = get_event_loop().create_task(x)
+    return task

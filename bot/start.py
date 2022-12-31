@@ -133,8 +133,8 @@ async def add(client, message):
                     await client.send_message(user_id, "🔃❗Tasked Has Been Cancelled.")
                     break
             await ask.request.delete()
-    caption=f"🧩Total Videos: {str(q)}"
-    zxx = open('data.txt', "w", encoding="utf-8")
+    caption=f"🧩Total Files: {str(q-1)}"
+    zxx = open('Nik66Bots.txt', "w", encoding="utf-8")
     zxx.write(str(vdata))
     zxx.close()
     await client.send_document(chat_id=user_id, document='data.txt', caption=caption)
@@ -250,11 +250,13 @@ async def process(bot, message):
                 preset = 'ultrafast'
                 watermark_position = "5:5"
                 watermark_size = "7"
+                datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🧿Adding Watermark')
                 try:
-                        output_vid = await vidmark(the_media, reply, progress, watermark_path, output_vid, duration, preset, watermark_position, watermark_size)
+                        output_vid = await vidmark(the_media, reply, progress, watermark_path, output_vid, duration, preset, watermark_position, watermark_size, datam)
                 except Exception as err:
                         await reply.edit(f"❗Unable to add Watermark!\n\n{str(err)}")
                         await delete_all("./RAW")
                         return
+                print(output_vid)
                 break
         return
