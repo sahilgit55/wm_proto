@@ -36,8 +36,9 @@ async def progress_bar(current,total,reply,start,*datam):
                 opt = datam[1]
                 remnx = datam[2]
                 ptype = datam[3]
+                ps = datam[4]
                 botupt = getbotuptime()
-                pro_bar = f"{str(ptype)} ({opt})\n🎟️File: {name}\n🧶Remaining: {str(remnx)}\n\n\n {str(progress)}\n\n ┌ 𝙿𝚛𝚘𝚐𝚛𝚎𝚜𝚜:【 {perc} 】\n ├ 𝚂𝚙𝚎𝚎𝚍:【 {sp} 】\n ├ 𝚄𝚙𝚕𝚘𝚊𝚍𝚎𝚍:【 {cur} 】\n └ 𝚂𝚒𝚣𝚎:【 {tot} 】\n\n\n♥️Bot Uptime: {str(botupt)}"
+                pro_bar = f"{str(ptype)} ({opt})\n🎟️File: {name}\n🧶Remaining: {str(remnx)}\n\n\n {str(progress)}\n\n ┌ 𝙿𝚛𝚘𝚐𝚛𝚎𝚜𝚜:【 {perc} 】\n ├ 𝚂𝚙𝚎𝚎𝚍:【 {sp} 】\n ├ {ps}:【 {cur} 】\n └ 𝚂𝚒𝚣𝚎:【 {tot} 】\n\n\n♥️Bot Uptime: {str(botupt)}"
                 await reply.edit(pro_bar)
             
             except FloodWait as e:

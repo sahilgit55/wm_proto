@@ -9,12 +9,12 @@ from helper_fns.helper import TimeFormatter
 from pyrogram.errors.exceptions.flood_420 import FloodWait
 from asyncio import create_subprocess_shell
 from asyncio.subprocess import PIPE, STDOUT
-from helper_fns.helper import hrb, getbotuptime, Timer, timex, create_backgroud_task
+from helper_fns.helper import hrb, getbotuptime, Timer, timex, create_backgroud_task, get_readable_time, delete_trash
 from asyncio import sleep as assleep
 from helper_fns.pbar import get_progress_bar_string
 
 all_data = []
-msg_data = ['Getting Logs']
+msg_data = ['Processing']
 
 async def update_message(working_dir, COMPRESSION_START_TIME, total_time, mode,message, position, pid, datam):
     txt = ''
@@ -24,10 +24,13 @@ async def update_message(working_dir, COMPRESSION_START_TIME, total_time, mode,m
     ptype = datam[3]
     while True:
             await assleep(5)
+            print("🔶Updating Message", pid)
             with open(working_dir, 'r+') as file:
                                     text = file.read()
                                     frame = re.findall("frame=(\d+)", text)
                                     time_in_us=re.findall("out_time_ms=(\d+)", text)
+                                    bitrate = re.findall("bitrate=(\d+)", text)
+                                    fps = re.findall("fps=(\d+)", text)
                                     progress=re.findall("progress=(\w+)", text)
                                     speed=re.findall("speed=(\d+\.?\d*)", text)
                                     if len(frame):
@@ -45,16 +48,31 @@ async def update_message(working_dir, COMPRESSION_START_TIME, total_time, mode,m
                                     if len(progress):
                                         if progress[-1] == "end":
                                             break
-                                    execution_time = TimeFormatter((time.time() - COMPRESSION_START_TIME)*1000)
+                                    if len(bitrate):
+                                        bitrate = bitrate[-1].strip()
+                                    else:
+                                        bitrate = "0kbits/s"
+                                    if len(fps):
+                                        fps = fps[-1].strip()
+                                    else:
+                                        fps = "0"
+                                    execution_time = get_readable_time(time.time() - COMPRESSION_START_TIME)
                                     elapsed_time = int(time_in_us)/1000000
+                                    out_time = get_readable_time(elapsed_time)
                                     difference = math.floor( (total_time - elapsed_time) / float(speed) )
                                     ETA = "-"
                                     if difference > 0:
-                                        ETA = TimeFormatter(difference*1000)
+                                        ETA = get_readable_time(difference)
                                     perc = f"{elapsed_time * 100 / total_time:.1f}%"
-                                    progress = get_progress_bar_string(elapsed_time, total_time)
+                                    progressx = get_progress_bar_string(elapsed_time, total_time)
                                     botupt = getbotuptime()
-                                    pro_bar = f"{str(ptype)} ({opt})\n🎟️File: {name}\n🧶Remaining: {str(remnx)}\n🖼Position: {str(position)}\n♒Preset: `{mode}`\n🧭Duration: `{format_timespan(total_time)}`\n\n\n{progress}\n\n\n ┌ 𝙿𝚛𝚘𝚐𝚛𝚎𝚜𝚜:【 {perc} 】\n ├ 𝚂𝚙𝚎𝚎𝚍:【 {speed} 】\n └ 𝙿𝚛𝚘𝚌𝚎𝚜𝚜𝚎𝚍:【 {str(TimeFormatter(time_in_us))} 】\n\n⚙{str(msg_data[-1])}\n\n\n⏰️ ETA: `{ETA}`\n♥️Bot Uptime: {str(botupt)}"
+                                    try:
+                                            logs = all_data[-2] + "\n" + msg_data[-1]
+                                    except:
+                                        logs = msg_data[-1]
+                                    if len(logs)>3800:
+                                        logs = msg_data[-1]
+                                    pro_bar = f"{str(ptype)} ({opt})\n🎟️File: {name}\n🧶Remaining: {str(remnx)}\n🖼Position: {str(position)}\n♒Preset: {mode}\n🧭Duration: {get_readable_time(total_time)}\n\n\n{progressx}\n\n\n ┌ 𝙿𝚛𝚘𝚐𝚛𝚎𝚜𝚜:【 {perc} 】\n ├ 𝚂𝚙𝚎𝚎𝚍:【 {speed}x 】\n ├ 𝙱𝚒𝚝𝚛𝚊𝚝𝚎:【 {bitrate} kbits/s 】\n ├ 𝙵𝙿𝚂:【 {fps} 】\n ├ 𝚁𝚎𝚖𝚊𝚒𝚗𝚒𝚗𝚐:【 {get_readable_time((total_time - elapsed_time))} 】\n └ 𝙿𝚛𝚘𝚌𝚎𝚜𝚜𝚎𝚍:【 {str(out_time)} 】\n\n\n⚡️●●●● 𝙿𝚛𝚘𝚌𝚎𝚜𝚜 ●●●●⚡️\n\n\n⚙{str(logs)}\n\n\n⏰️ ETA: `{ETA}`\n⛓Ex Time: {str(execution_time)}\n♥️Bot Uptime: {str(botupt)}"
                                     if txt!=pro_bar:
                                             txt=pro_bar
                                             try:
@@ -70,7 +88,7 @@ async def vidmark(the_media, message, working_dir, watermark_path, output_vid, t
     global all_data
     global msg_data
     all_data = []
-    msg_data = ['Getting Logs']
+    msg_data = ['Processing']
     COMPRESSION_START_TIME = time.time()
     cmd = f"""ffmpeg -hide_banner -progress {working_dir} -i {the_media} -i {watermark_path} -filter_complex "[1][0]scale2ref=w='iw*{size}/100':h='ow/mdar'[wm][vid];[vid][wm]overlay={position}" -preset {mode} -codec:a copy {output_vid}"""
     print(cmd)
@@ -95,8 +113,9 @@ async def vidmark(the_media, message, working_dir, watermark_path, output_vid, t
         task.cancel()
     except Exception as e:
         print(e)
+    await delete_trash(working_dir)
     if os.path.lexists(output_vid):
-        return [True, output_vid]
+        return [True]
     else:
         return [False, all_data]
 

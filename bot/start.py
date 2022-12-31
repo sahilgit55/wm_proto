@@ -137,7 +137,7 @@ async def add(client, message):
     zxx = open('Nik66Bots.txt', "w", encoding="utf-8")
     zxx.write(str(vdata))
     zxx.close()
-    await client.send_document(chat_id=user_id, document='data.txt', caption=caption)
+    await client.send_document(chat_id=user_id, document='Nik66Bots.txt', caption=caption)
     return
 
 
@@ -226,7 +226,7 @@ async def process(bot, message):
                 dl_loc = f'./RAW/{file_name}'
                 file_size = media.file_size
                 start_time = timex()
-                datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔽Downloading')
+                datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔽Downloading', '𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍𝚎𝚍')
                 reply = await bot.send_message(chat_id=user_id,
                                         text=f"🔽Starting Download ({str(countx)}/{str(limit_to-limit)})\n🎟️File: {file_name}\n🧶Remaining: {str(remnx)}")
                 the_media = await bot.download_media(
@@ -237,14 +237,14 @@ async def process(bot, message):
                         )
                 if the_media is None:
                         await delete_trash(the_media)
-                        await reply.delete()
+                        await reply.edit(f"❗Unable to Download Media!\n\n{str(err)}\n\n{str(datam)}")
                         failed[value] = datam
                         continue
                 duration = 0
                 metadata = extractMetadata(createParser(the_media))
                 if metadata.has("duration"):
                         duration = metadata.get('duration').seconds
-                output_vid = f"./{str(file_name)}.mp4"
+                output_vid = f"./{str(file_name)}"
                 progress = f"./{str(file_name)}_progress.txt"
                 watermark_path = f'./watermark.jpg'
                 preset = 'ultrafast'
@@ -252,11 +252,23 @@ async def process(bot, message):
                 watermark_size = "7"
                 datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🧿Adding Watermark')
                 try:
-                        output_vid = await vidmark(the_media, reply, progress, watermark_path, output_vid, duration, preset, watermark_position, watermark_size, datam)
+                        output_vid_res = await vidmark(the_media, reply, progress, watermark_path, output_vid, duration, preset, watermark_position, watermark_size, datam)
                 except Exception as err:
-                        await reply.edit(f"❗Unable to add Watermark!\n\n{str(err)}")
+                        await reply.edit(f"❗Unable to add Watermark!\n\n{str(err)}\n\n{str(datam)}")
                         await delete_all("./RAW")
-                        return
-                print(output_vid)
+                        failed[value] = datam
+                        continue
+                if output_vid_res[0]:
+                        cc = "test"
+                        datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔼Uploadinig', '𝚄𝚙𝚕𝚘𝚊𝚍𝚎𝚍')
+                        await bot.send_video(
+                                        chat_id=user_id,
+                                        video=output_vid,
+                                        caption=cc,
+                                        supports_streaming=True,
+                                        duration=duration,
+                                        thumb='./thumb.jpg',
+                                        progress=progress_bar,
+                                        progress_args=(reply,start_time, *datam))
                 break
         return
