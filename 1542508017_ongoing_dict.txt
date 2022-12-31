@@ -1,0 +1,1 @@
+{1: {'chat': 1542508017, 'vid': 905, 'thumb': False, 'sub': False}, 2: {'chat': 1542508017, 'vid': 911, 'thumb': True, 'tid': 913, 'sub': True, 'sid': 915, 'smode': 'hardmux'}, 3: {'chat': 1542508017, 'vid': 919, 'thumb': False, 'sub': False}}

@@ -1,0 +1,8 @@
+Pyrogram==2.0.70
+TgCrypto==1.2.5
+pyromod==1.5
+pytz==2022.7
+dnspython==2.2.1
+motor==3.1.1
+pymongo==4.3.3
+python-dotenv==0.21.0
