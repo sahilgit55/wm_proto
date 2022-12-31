@@ -2,6 +2,9 @@ from config import Config
 from db_handler import Database
 from time import time
 from config import botStartTime
+from os import remove
+from shutil import rmtree
+
 
 db = Database()
 
@@ -76,6 +79,19 @@ def hrb(value, digits= 2, delim= "", postfix=""):
 def getbotuptime():
     return get_readable_time(time() - botStartTime)
 
+
+def TimeFormatter(milliseconds: int) -> str:
+    seconds, milliseconds = divmod(int(milliseconds), 1000)
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    days, hours = divmod(hours, 24)
+    tmp = ((str(days) + "d, ") if days else "") + \
+        ((str(hours) + "h, ") if hours else "") + \
+        ((str(minutes) + "m, ") if minutes else "") + \
+        ((str(seconds) + "s, ") if seconds else "") + \
+        ((str(milliseconds) + "ms, ") if milliseconds else "")
+    return tmp[:-2]
+
 ##########Save Token###############
 def USER_DATA():
     return User_Data
@@ -124,3 +140,17 @@ def get_media(message):
             media = getattr(message, attr, None)
             if media:
                 return media
+            
+
+##########Clean##########
+async def delete_trash(file):
+    try:
+        remove(file)
+    except Exception as e:
+        print(e)
+
+async def delete_all(dir):
+    try:
+        rmtree(dir)
+    except Exception as e:
+        print(e)

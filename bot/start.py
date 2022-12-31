@@ -2,9 +2,12 @@ from pyrogram import Client,  filters
 from time import time
 from config import Config
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from helper_fns.helper import get_readable_time, savetoken, USER_DATA, get_media, timex
+from helper_fns.helper import get_readable_time, savetoken, USER_DATA, get_media, timex, delete_all, delete_trash
 from helper_fns.pbar import progress_bar
 from config import botStartTime
+from hachoir.metadata import extractMetadata
+from hachoir.parser import createParser
+from helper_fns.watermark import vidmark
 
 
 
@@ -208,26 +211,50 @@ async def process(bot, message):
                 await bot.send_message(user_id, "❗Invalied Values.")
                 return
         countx = 1
+        failed = {}
+        success = {}
         for i in range(limit, limit_to):
                 remnx = str((limit_to-limit)-countx)
                 est_start_time = timex()
-                datam = dic[i+1]
+                value = i+1
+                datam = dic[value]
                 vid = datam['vid']
                 chat_id = datam['chat']
-                m = await USER.get_messages(chat_id, vid, replies=0)
+                m = await bot.get_messages(chat_id, vid, replies=0)
                 media = get_media(m)
                 file_name = media.file_name
                 dl_loc = f'./RAW/{file_name}'
                 file_size = media.file_size
-                reply = await USER.send_message(chat_id=user_id,
-                                text=f"🔽Starting Download `{str(file_name)}`.")
                 start_time = timex()
                 datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔽Downloading')
-                the_media = await USER.download_media(
-			message=m,
-			file_name=dl_loc,
-			progress=progress_bar,
-			progress_args=(reply,start_time, *datam)
-		)
+                reply = await bot.send_message(chat_id=user_id,
+                                        text=f"🔽Starting Download ({str(countx)}/{str(limit_to-limit)})\n🎟️File: {file_name}\n🧶Remaining: {str(remnx)}")
+                the_media = await bot.download_media(
+                                message=m,
+                                file_name=dl_loc,
+                                progress=progress_bar,
+                                progress_args=(reply,start_time,*datam)
+                        )
+                if the_media is None:
+                        await delete_trash(the_media)
+                        await reply.delete()
+                        failed[value] = datam
+                        continue
+                duration = 0
+                metadata = extractMetadata(createParser(the_media))
+                if metadata.has("duration"):
+                        duration = metadata.get('duration').seconds
+                output_vid = f"./{str(file_name)}.mp4"
+                progress = f"./{str(file_name)}_progress.txt"
+                watermark_path = f'./watermark.jpg'
+                preset = 'ultrafast'
+                watermark_position = "5:5"
+                watermark_size = "7"
+                try:
+                        output_vid = await vidmark(the_media, reply, progress, watermark_path, output_vid, duration, preset, watermark_position, watermark_size)
+                except Exception as err:
+                        await reply.edit(f"❗Unable to add Watermark!\n\n{str(err)}")
+                        await delete_all("./RAW")
+                        return
                 break
         return
