@@ -2,13 +2,16 @@ from pyrogram import Client,  filters
 from time import time
 from config import Config
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from helper_fns.helper import get_readable_time, savetoken, USER_DATA, get_media, timex, delete_all, delete_trash
+from helper_fns.helper import get_readable_time, saveconfig, deleteconfig, USER_DATA, get_media, timex, delete_all, delete_trash, new_user
 from helper_fns.pbar import progress_bar
 from config import botStartTime
 from hachoir.metadata import extractMetadata
 from hachoir.parser import createParser
-from helper_fns.watermark import vidmark
+from helper_fns.watermark import vidmarkx, hardmux_vidx
 from helper_fns.muxer import softremove_vid, hardmux_vid, softmux_vid
+from string import ascii_lowercase, digits
+from random import choices
+from helper_fns.process import append_master_process, remove_master_process, get_master_process, append_sub_process, remove_sub_process, get_sub_process
 
 
 
@@ -22,6 +25,9 @@ USER = Config.USER
 @Client.on_message(filters.command('start'))
 async def startmsg(client, message):
     user_id = message.chat.id
+    userx = message.from_user.id
+    if userx not in USER_DATA():
+            await new_user(userx)
     text = f"Hi {message.from_user.mention(style='md')}, I Am Alive."
     await client.send_message(chat_id=user_id,
                                 text=text,reply_markup=InlineKeyboardMarkup(
@@ -43,6 +49,8 @@ async def startmsg(client, message):
 async def timecmd(client, message):
     user_id = message.chat.id
     userx = message.from_user.id
+    if userx not in USER_DATA():
+            await new_user(userx)
     if userx in sudo_users:
         currentTime = get_readable_time(time() - botStartTime)
         await client.send_message(chat_id=message.chat.id,
@@ -58,6 +66,9 @@ async def timecmd(client, message):
 @Client.on_message(filters.command(["add"]))
 async def add(client, message):
     user_id = message.chat.id
+    userx = message.from_user.id
+    if userx not in USER_DATA():
+            await new_user(userx)
     vdata = {}
     q = 1
     while True:
@@ -149,6 +160,8 @@ async def add(client, message):
 async def process(bot, message):
         user_id = message.chat.id
         userx = message.from_user.id
+        if userx not in USER_DATA():
+                await new_user(userx)
         if userx in sudo_users:
                 try:
                                 file_id = int(message.reply_to_message.id)
@@ -214,88 +227,249 @@ async def process(bot, message):
         countx = 1
         failed = {}
         success = {}
+        process_id = str(''.join(choices(ascii_lowercase + digits, k=10)))
+        append_master_process(process_id)
+        mtime = timex()
         for i in range(limit, limit_to):
-                remnx = str((limit_to-limit)-countx)
-                est_start_time = timex()
-                value = i+1
-                datam = dic[value]
-                vid = datam['vid']
-                chat_id = datam['chat']
-                m = await bot.get_messages(chat_id, vid, replies=0)
-                media = get_media(m)
-                file_name = media.file_name
-                dl_loc = f'./RAW/{file_name}'
-                start_time = timex()
-                datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔽Downloading Video', '𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍𝚎𝚍')
-                reply = await bot.send_message(chat_id=user_id,
-                                        text=f"🔽Starting Download ({str(countx)}/{str(limit_to-limit)})\n🎟️File: {file_name}\n🧶Remaining: {str(remnx)}")
-                the_media = await bot.download_media(
-                                message=m,
-                                file_name=dl_loc,
-                                progress=progress_bar,
-                                progress_args=(reply,start_time,*datam)
-                        )
-                if the_media is None:
-                        await delete_trash(the_media)
-                        await reply.edit(f"❗Unable to Download Media!\n\n{str(err)}\n\n{str(datam)}")
-                        failed[value] = datam
-                        continue
-                duration = 0
-                metadata = extractMetadata(createParser(the_media))
-                if metadata.has("duration"):
-                        duration = metadata.get('duration').seconds
-                output_vid = f"./{str(file_name)}"
-                progress = f"./{str(file_name)}_progress.txt"
-                watermark_path = f'./watermark.jpg'
-                preset = 'ultrafast'
-                watermark_position = "5:5"
-                watermark_size = "7"
-                datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🧿Adding Watermark')
-                try:
-                        output_vid_res = await vidmark(the_media, reply, progress, watermark_path, output_vid, duration, preset, watermark_position, watermark_size, datam)
-                except Exception as err:
-                        await reply.edit(f"❗Unable to add Watermark!\n\n{str(err)}\n\n{str(datam)}")
-                        await delete_all("./RAW")
-                        failed[value] = datam
-                        continue
-                if output_vid_res[0]:
-                        if datam['sub']:
-                                sid = datam['sid']
-                                subm = await bot.get_messages(chat_id, sid, replies=0)
+                if process_id in get_master_process():
+                                stime = timex()
+                                subprocess_id = str(''.join(choices(ascii_lowercase + digits, k=10)))
+                                append_sub_process(subprocess_id)
+                                remnx = str((limit_to-limit)-countx)
+                                value = i+1
+                                data = dic[value]
+                                vid = data['vid']
+                                chat_id = data['chat']
+                                m = await bot.get_messages(chat_id, vid, replies=0)
                                 media = get_media(m)
-                                sub_name = media.file_name
-                                sub_loc = f'./RAW/{sub_name}'
+                                file_name = media.file_name
+                                dl_loc = f'./RAW/{file_name}'
                                 start_time = timex()
-                                datam = (sub_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔽Downloading Subtitle', '𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍𝚎𝚍')
-                                subtitle = await bot.download_media(
-                                                message=subm,
-                                                file_name=sub_loc,
+                                datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔽Downloading Video', '𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍𝚎𝚍')
+                                reply = await bot.send_message(chat_id=user_id,
+                                                        text=f"🔽Starting Download ({str(countx)}/{str(limit_to-limit)})\n🎟️File: {file_name}\n🧶Remaining: {str(remnx)}")
+                                the_media = await bot.download_media(
+                                                message=m,
+                                                file_name=dl_loc,
                                                 progress=progress_bar,
                                                 progress_args=(reply,start_time,*datam)
                                         )
-                                if subtitle is None:
-                                        await delete_trash(subtitle)
-                                        await reply.edit(f"❗Unable to Download Subtitle!\n\n{str(err)}\n\n{str(datam)}")
-                                        failed[value] = datam
+                                if the_media is None:
+                                        await delete_trash(the_media)
+                                        await reply.edit(f"❗Unable to Download Media!\n\n{str(err)}\n\n{str(data)}")
+                                        failed[value] = data
                                         continue
-                                sub_mode = datam['smode']
-                                ['softremove', 'softmux', 'hardmux']
-                                if sub_mode=="softremove":
-                                        output_vid = await softremove_vid(output_vid, sub_loc, reply)
-                                elif sub_mode=="softmux":
-                                        output_vid = await softmux_vid(output_vid, sub_loc, reply)
-                                elif sub_mode=="hardmux":
-                                        output_vid = await hardmux_vid(output_vid, sub_loc, reply)
-                        cc = "test"
-                        datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔼Uploadinig', '𝚄𝚙𝚕𝚘𝚊𝚍𝚎𝚍')
-                        await bot.send_video(
-                                        chat_id=user_id,
-                                        video=output_vid,
-                                        caption=cc,
-                                        supports_streaming=True,
-                                        duration=duration,
-                                        thumb='./thumb.jpg',
-                                        progress=progress_bar,
-                                        progress_args=(reply,start_time, *datam))
-                break
+                                duration = 0
+                                metadata = extractMetadata(createParser(the_media))
+                                if metadata.has("duration"):
+                                        duration = metadata.get('duration').seconds
+                                output_vid = f"./{str(file_name)}"
+                                progress = f"./{str(file_name)}_progress.txt"
+                                watermark_path = f'./watermark.jpg'
+                                preset = 'ultrafast'
+                                watermark_position = "5:5"
+                                watermark_size = "7"
+                                datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🧿Adding Watermark')
+                                try:
+                                        output_vid_res = await vidmarkx(the_media, reply, progress, watermark_path, output_vid, duration, preset, watermark_position, watermark_size, datam, subprocess_id)
+                                except Exception as err:
+                                        await reply.edit(f"❗Unable to add Watermark!\n\n{str(err)}\n\n{str(data)}")
+                                        await delete_all("./RAW")
+                                        await delete_trash(progress)
+                                        failed[value] = data
+                                        continue
+                                await delete_trash(progress)
+                                if output_vid_res[0]:
+                                        if data['sub']:
+                                                sid = data['sid']
+                                                subm = await bot.get_messages(chat_id, sid, replies=0)
+                                                media = get_media(subm)
+                                                sub_name = media.file_name
+                                                sub_loc = f'./RAW/{sub_name}'
+                                                start_time = timex()
+                                                datam = (sub_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔽Downloading Subtitle', '𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍𝚎𝚍')
+                                                subtitle = await bot.download_media(
+                                                                message=subm,
+                                                                file_name=sub_loc,
+                                                                progress=progress_bar,
+                                                                progress_args=(reply,start_time,*datam)
+                                                        )
+                                                if subtitle is None:
+                                                        await delete_trash(subtitle)
+                                                        await reply.edit(f"❗Unable to Download Subtitle!\n\n{str(err)}\n\n{str(data)}")
+                                                        failed[value] = data
+                                                        continue
+                                                sub_mode = data['smode']
+                                                datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🎮Remuxing Subtitles', stime, mtime)
+                                                remux_preset =  'ultrafast'
+                                                if sub_mode=="softremove":
+                                                        output_vid = await softremove_vid(output_vid, sub_loc, reply)
+                                                elif sub_mode=="softmux":
+                                                        output_vid = await softmux_vid(output_vid, sub_loc, reply)
+                                                elif sub_mode=="hardmux":
+                                                        output_vid = await hardmux_vidx(output_vid, sub_loc, reply, subprocess_id, remux_preset, duration, progress, process_id, datam)
+                                        cc = "test"
+                                        datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔼Uploadinig', '𝚄𝚙𝚕𝚘𝚊𝚍𝚎𝚍')
+                                        await bot.send_video(
+                                                        chat_id=user_id,
+                                                        video=output_vid,
+                                                        caption=cc,
+                                                        supports_streaming=True,
+                                                        duration=duration,
+                                                        thumb='./thumb.jpg',
+                                                        progress=progress_bar,
+                                                        progress_args=(reply,start_time, *datam))
+                else:
+                        break
         return
+
+
+
+################Cancel Process###########
+@Client.on_message(filters.command(["cancel"]))
+async def cancell(client, message):
+  user_id = message.chat.id
+  userx = message.from_user.id
+  if userx not in USER_DATA():
+            await new_user(userx)
+  if userx in sudo_users:
+        if len(message.command)==3:
+                processx = message.command[1]
+                process_id = message.command[2]
+                try:
+                        if processx=='sp':
+                                        remove_sub_process(process_id)
+                                        await client.send_message(chat_id=user_id,
+                                                        text=f'✅Successfully Cancelled.')
+                        elif processx=='mp':
+                                        remove_master_process(process_id)
+                                        await client.send_message(chat_id=user_id,
+                                                        text=f'✅Successfully Cancelled.')
+                except Exception as e:
+                        await client.send_message(chat_id=user_id,
+                                        text=f'❗No Running Processs With This ID')
+                return
+        else:
+                await client.send_message(chat_id=user_id,
+                                        text=f'❗Give Me Process ID To Cancel.')
+  else:
+        await client.send_message(chat_id=user_id,
+                                text=f"❌Only Authorized Users Can Use This Command")
+        return
+
+
+##############Setting################
+@Client.on_message(filters.command(["settings"]))
+async def settings(_, message):
+                userx = message.from_user.id
+                userx = message.from_user.id
+                if userx not in USER_DATA():
+                        await new_user(userx)
+                watermark_position = USER_DATA()[userx]['watermark']['position']
+                if watermark_position == "5:main_h-overlay_h":
+                    position_tag = "Bottom Left"
+                elif watermark_position == "main_w-overlay_w-5:main_h-overlay_h-5":
+                    position_tag = "Bottom Right"
+                elif watermark_position == "main_w-overlay_w-5:5":
+                    position_tag = "Top Right"
+                elif watermark_position == "5:5":
+                    position_tag = "Top Left"
+                else:
+                    position_tag = "Top Left"
+
+                watermark_size = USER_DATA()[userx]['watermark']['size']
+                if int(watermark_size) == 5:
+                    size_tag = "5%"
+                elif int(watermark_size) == 7:
+                    size_tag = "7%"
+                elif int(watermark_size) == 10:
+                    size_tag = "10%"
+                elif int(watermark_size) == 15:
+                    size_tag = "15%"
+                elif int(watermark_size) == 20:
+                    size_tag = "20%"
+                elif int(watermark_size) == 25:
+                    size_tag = "25%"
+                elif int(watermark_size) == 30:
+                    size_tag = "30%"
+                elif int(watermark_size) == 35:
+                    size_tag = "35%"
+                elif int(watermark_size) == 40:
+                    size_tag = "40%"
+                elif int(watermark_size) == 45:
+                    size_tag = "45%"
+                else:
+                    size_tag = "7%"
+                watermark_preset = USER_DATA()[userx]['watermark']['preset']
+                muxer_preset = USER_DATA()[userx]['muxer']['preset']
+                positions = {'Set Top Left':"position_5:5", "Set Top Right": "position_main_w-overlay_w-5:5", "Set Bottom Left": "position_5:main_h-overlay_h", "Set Bottom Right": "position_main_w-overlay_w-5:main_h-overlay_h-5"}
+                sizes = [5,7,10,13,15,17,20,25,30,35,40,45]
+                pkeys = list(positions.keys())
+                KeyBoard = []
+                KeyBoard.append([InlineKeyboardButton(f"🔶Watermark Position - {position_tag}🔶", callback_data="lol-wposition")])
+                WP1 = []
+                WP2 = []
+                zx = 1
+                for z in pkeys:
+                    s_position = positions[z].replace('position_', '')
+                    if s_position !=watermark_position:
+                            datam = z
+                    else:
+                        datam = f"{str(z)} 🟢"
+                    keyboard = InlineKeyboardButton(datam, callback_data=str(positions[z]))
+                    if zx<3:
+                        WP1.append(keyboard)
+                    else:
+                        WP2.append(keyboard)
+                    zx+=1
+                KeyBoard.append(WP1)
+                KeyBoard.append(WP2)
+                KeyBoard.append([InlineKeyboardButton(f"🔶Watermark Size - {size_tag}🔶", callback_data="lol-wsize")])
+                WS1 = []
+                WS2 = []
+                WS3 = []
+                zz = 1
+                for x in sizes:
+                    vlue = f"size_{str(x)}"
+                    if int(watermark_size)!=int(x):
+                        datam = f"{str(x)}%"
+                    else:
+                        datam = f"{str(x)}% 🟢"
+                    keyboard = InlineKeyboardButton(datam, callback_data=vlue)
+                    if zz<5:
+                            WS1.append(keyboard)
+                    elif zz<9:
+                            WS2.append(keyboard)
+                    else:
+                            WS3.append(keyboard)
+                    zz+=1
+                KeyBoard.append(WS1)
+                KeyBoard.append(WS2)
+                KeyBoard.append(WS3)
+                KeyBoard.append([InlineKeyboardButton(f"🔶Watermark Preset - {watermark_preset}🔶", callback_data="lol-wpset")])
+                presets = ['ultrafast', 'veryfast']
+                WP = []
+                for pp in presets:
+                    if watermark_preset!=pp:
+                        datam = pp
+                    else:
+                        datam = f"{str(pp)} 🟢"
+                    keyboard = InlineKeyboardButton(datam, callback_data=f'wpreset_{str(pp)}')
+                    WP.append(keyboard)
+                KeyBoard.append(WP)
+                KeyBoard.append([InlineKeyboardButton(f"🔶Muxer Preset - {muxer_preset}🔶", callback_data="lol-mpset")])
+                MP = []
+                for pp in presets:
+                    if muxer_preset!=pp:
+                        datam = pp
+                    else:
+                        datam = f"{str(pp)} 🟢"
+                    keyboard = InlineKeyboardButton(datam, callback_data=f'mpreset_{str(pp)}')
+                    MP.append(keyboard)
+                KeyBoard.append(MP)
+                await message.reply_text(
+                        text="Here you can set your Watermark Settings:",
+                        disable_web_page_preview=True,
+                        reply_markup= InlineKeyboardMarkup(KeyBoard)
+                        )
+                return

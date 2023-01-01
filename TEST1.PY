@@ -1,23 +1,27 @@
+import asyncio
+from asyncio import Event, AbstractEventLoop
+from datetime import datetime
+import signal
+from typing import Optional
+from time import sleep
+from concurrent.futures import FIRST_COMPLETED
+
+async def s():
+    while True:
+           print("1")
+           break
+    return True
 
 
-def get_readable_time(seconds: int) -> str:
-    result = ''
-    (days, remainder) = divmod(seconds, 86400)
-    days = int(days)
-    if days != 0:
-        result += f'{days}d'
-    (hours, remainder) = divmod(remainder, 3600)
-    hours = int(hours)
-    if hours != 0:
-        result += f'{hours}h'
-    (minutes, seconds) = divmod(remainder, 60)
-    minutes = int(minutes)
-    if minutes != 0:
-        result += f'{minutes}m'
-    seconds = int(seconds)
-    result += f'{seconds}s'
-    return result
+async def s2():
+    while True:
+           print("2")
+    return
+
+async def main_async():
+    await asyncio.wait([s(), s2()], return_when=FIRST_COMPLETED)
+    print("ok")
+    return
 
 
-
-print(get_readable_time(814941000/1000000))
+asyncio.run(main_async())

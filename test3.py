@@ -8,6 +8,8 @@ progress_pattern = re.compile(
     r'(frame|fps|size|time|bitrate|speed)\s*\=\s*(\S+)'
 )
 
+Cancel = False
+
 def parse_progress(line):
     items = {
         key: value for key, value in progress_pattern.findall(line)
@@ -18,18 +20,20 @@ def parse_progress(line):
 
 async def check_task(tid):
     while True:
-        asyncio.sleep(1)
-        if tid not in get_sub_process():
-            break
+        print('sleeping 30 secs')
+        await asyncio.sleep(5)
+        break
     print("🔶Task Cancelled")
     return
         
+
+
 
 async def readlines(stream):
     pattern = re.compile(br'[\r\n]+')
 
     data = bytearray()
-    while not stream.at_eof():
+    while not stream.at_eof() or :
         lines = pattern.split(data)
         data[:] = lines.pop(-1)
 
@@ -99,31 +103,38 @@ async def softmux_vid(vid_filename, sub_filename, msg):
     else:
         await msg.edit('An Error occured while Muxing!')
         return False
-    time.sleep(2)
     return output
 
 
-async def hardmux_vid(vid_filename, sub_filename, msg, subprocess_id, preset, duration, progress, datam):
+async def hardmux_vid(vid_filename, sub_filename, msg, subprocess_id):
+    
     start = time.time()
+    vid = './'+vid_filename
+    sub = './'+sub_filename
+    
     out_file = '.'.join(vid_filename.split('.')[:-1])
     output = out_file+'1.mp4'
+    out_location = './'+output
     
     command = [
             'ffmpeg','-hide_banner',
-            '-i',vid_filename,
-            '-vf','subtitles='+sub_filename,
+            '-i',vid,
+            '-vf','subtitles='+sub,
             '-c:v','h264',
             '-map','0:v:0',
             '-map','0:a:0?',
-            '-preset', preset,
-            '-y',output
+            '-preset','ultrafast',
+            '-y',out_location
             ]
+    print(command)
     process = await asyncio.create_subprocess_exec(
             *command,
             # stdout must a pipe to be accessible as process.stdout
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             )
+    
+    # https://github.com/jonghwanhyeon/python-ffmpeg/blob/ccfbba93c46dc0d2cafc1e40ecb71ebf3b5587d2/ffmpeg/ffmpeg.py#L114
     task = asyncio.create_task(check_task(subprocess_id))
     update_msg = asyncio.create_task(read_stderr(start,msg, process))
     done, pending = await asyncio.wait([task,
@@ -138,22 +149,23 @@ async def hardmux_vid(vid_filename, sub_filename, msg, subprocess_id, preset, du
       print(e)
     if update_msg in pending:
       update_msg.cancelled()
+      print("cancelled Update message")
+      update_msg.cancel()
+      print("cancel Update message")
       await update_msg
+      print("update message cancelled")
       await msg.edit("update message cancelled")
     if task in pending:
       task.cancel()
       await task
     print(len(asyncio.Task.all_tasks()))
-    print("wating....")
+    print("Done")
     if return_code == 0:
         await msg.edit('Muxing  Completed Successfully!\n\nTime taken : {} seconds'.format(round(start-time.time())))
     else:
         await msg.edit('An Error occured while Muxing!')
         return False
-    
-    time.sleep(2)
     return output
-
 
 
 async def softremove_vid(vid_filename, sub_filename, msg):

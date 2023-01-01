@@ -10,7 +10,6 @@ from asyncio import get_event_loop
 db = Database()
 
 
-
 ############Variables##############
 User_Data = eval(Config.User_Data)
 CREDIT = Config.CREDIT
@@ -97,15 +96,28 @@ def TimeFormatter(milliseconds: int) -> str:
 def USER_DATA():
     return User_Data
 
+#########gen data###########
+async def new_user(user_id):
+        User_Data[user_id] = {}
+        User_Data[user_id]['watermark'] = {}
+        User_Data[user_id]['watermark']['position'] = '5:5'
+        User_Data[user_id]['watermark']['size'] = '7'
+        User_Data[user_id]['watermark']['preset'] = 'ultrafast'
+        User_Data[user_id]['muxer'] = {}
+        User_Data[user_id]['muxer']['preset'] = 'ultrafast'
+        data = await db.add_datam(str(User_Data), CREDIT, "User_Data")
+        return data
+
+
 ##########Save Token###############
-async def savetoken(user_id, token, user):
+async def saveconfig(user_id, dname, pos, value):
     try:
         if user_id not in User_Data:
             User_Data[user_id] = {}
-            User_Data[user_id]['gtoken'] = {}
-            User_Data[user_id]['gtoken'][user] = token
+            User_Data[user_id][dname] = {}
+            User_Data[user_id][dname][pos] = value
         else:
-            User_Data[user_id]['gtoken'][user] = token
+            User_Data[user_id][dname][pos] = value
         data = await db.add_datam(str(User_Data), CREDIT, "User_Data")
         return data
     except Exception as e:
@@ -114,9 +126,9 @@ async def savetoken(user_id, token, user):
     
 
 ##########Delete Token###############
-async def deletetoken(user_id, user):
+async def deleteconfig(user_id, dname, pos):
         try:
-            del User_Data[user_id]['gtoken'][user]
+            del User_Data[user_id][dname][pos]
             data = await db.add_datam(str(User_Data), CREDIT, "User_Data")
             print("🔶Token Deleted Successfully")
             return data
@@ -158,7 +170,6 @@ async def delete_all(dir):
         
         
 ########Background#############
-
 async def create_backgroud_task(x):
     task = get_event_loop().create_task(x)
     return task
