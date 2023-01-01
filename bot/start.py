@@ -8,6 +8,7 @@ from config import botStartTime
 from hachoir.metadata import extractMetadata
 from hachoir.parser import createParser
 from helper_fns.watermark import vidmark
+from helper_fns.muxer import softremove_vid, hardmux_vid, softmux_vid
 
 
 
@@ -224,9 +225,8 @@ async def process(bot, message):
                 media = get_media(m)
                 file_name = media.file_name
                 dl_loc = f'./RAW/{file_name}'
-                file_size = media.file_size
                 start_time = timex()
-                datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔽Downloading', '𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍𝚎𝚍')
+                datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔽Downloading Video', '𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍𝚎𝚍')
                 reply = await bot.send_message(chat_id=user_id,
                                         text=f"🔽Starting Download ({str(countx)}/{str(limit_to-limit)})\n🎟️File: {file_name}\n🧶Remaining: {str(remnx)}")
                 the_media = await bot.download_media(
@@ -259,6 +259,33 @@ async def process(bot, message):
                         failed[value] = datam
                         continue
                 if output_vid_res[0]:
+                        if datam['sub']:
+                                sid = datam['sid']
+                                subm = await bot.get_messages(chat_id, sid, replies=0)
+                                media = get_media(m)
+                                sub_name = media.file_name
+                                sub_loc = f'./RAW/{sub_name}'
+                                start_time = timex()
+                                datam = (sub_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔽Downloading Subtitle', '𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍𝚎𝚍')
+                                subtitle = await bot.download_media(
+                                                message=subm,
+                                                file_name=sub_loc,
+                                                progress=progress_bar,
+                                                progress_args=(reply,start_time,*datam)
+                                        )
+                                if subtitle is None:
+                                        await delete_trash(subtitle)
+                                        await reply.edit(f"❗Unable to Download Subtitle!\n\n{str(err)}\n\n{str(datam)}")
+                                        failed[value] = datam
+                                        continue
+                                sub_mode = datam['smode']
+                                ['softremove', 'softmux', 'hardmux']
+                                if sub_mode=="softremove":
+                                        output_vid = await softremove_vid(output_vid, sub_loc, reply)
+                                elif sub_mode=="softmux":
+                                        output_vid = await softmux_vid(output_vid, sub_loc, reply)
+                                elif sub_mode=="hardmux":
+                                        output_vid = await hardmux_vid(output_vid, sub_loc, reply)
                         cc = "test"
                         datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔼Uploadinig', '𝚄𝚙𝚕𝚘𝚊𝚍𝚎𝚍')
                         await bot.send_video(
