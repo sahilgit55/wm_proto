@@ -18,7 +18,7 @@ from helper_fns.process import append_master_process, remove_master_process, get
 ############Variables##############
 sudo_users = eval(Config.SUDO_USERS)
 USER = Config.USER
-
+wpositions = {'5:5': 'Set Top Left', 'main_w-overlay_w-5:5': 'Set Top Right', '5:main_h-overlay_h': 'Set Bottom Left', 'main_w-overlay_w-5:main_h-overlay_h-5': 'Set Bottom Right'}
 
 
 ################Start####################
@@ -366,47 +366,14 @@ async def settings(_, message):
                 if userx not in USER_DATA():
                         await new_user(userx)
                 watermark_position = USER_DATA()[userx]['watermark']['position']
-                if watermark_position == "5:main_h-overlay_h":
-                    position_tag = "Bottom Left"
-                elif watermark_position == "main_w-overlay_w-5:main_h-overlay_h-5":
-                    position_tag = "Bottom Right"
-                elif watermark_position == "main_w-overlay_w-5:5":
-                    position_tag = "Top Right"
-                elif watermark_position == "5:5":
-                    position_tag = "Top Left"
-                else:
-                    position_tag = "Top Left"
-
                 watermark_size = USER_DATA()[userx]['watermark']['size']
-                if int(watermark_size) == 5:
-                    size_tag = "5%"
-                elif int(watermark_size) == 7:
-                    size_tag = "7%"
-                elif int(watermark_size) == 10:
-                    size_tag = "10%"
-                elif int(watermark_size) == 15:
-                    size_tag = "15%"
-                elif int(watermark_size) == 20:
-                    size_tag = "20%"
-                elif int(watermark_size) == 25:
-                    size_tag = "25%"
-                elif int(watermark_size) == 30:
-                    size_tag = "30%"
-                elif int(watermark_size) == 35:
-                    size_tag = "35%"
-                elif int(watermark_size) == 40:
-                    size_tag = "40%"
-                elif int(watermark_size) == 45:
-                    size_tag = "45%"
-                else:
-                    size_tag = "7%"
                 watermark_preset = USER_DATA()[userx]['watermark']['preset']
                 muxer_preset = USER_DATA()[userx]['muxer']['preset']
                 positions = {'Set Top Left':"position_5:5", "Set Top Right": "position_main_w-overlay_w-5:5", "Set Bottom Left": "position_5:main_h-overlay_h", "Set Bottom Right": "position_main_w-overlay_w-5:main_h-overlay_h-5"}
                 sizes = [5,7,10,13,15,17,20,25,30,35,40,45]
                 pkeys = list(positions.keys())
                 KeyBoard = []
-                KeyBoard.append([InlineKeyboardButton(f"🔶Watermark Position - {position_tag}🔶", callback_data="lol-wposition")])
+                KeyBoard.append([InlineKeyboardButton(f"🔶Watermark Position - {wpositions[watermark_position]}🔶", callback_data="lol-wposition")])
                 WP1 = []
                 WP2 = []
                 zx = 1
@@ -424,7 +391,7 @@ async def settings(_, message):
                     zx+=1
                 KeyBoard.append(WP1)
                 KeyBoard.append(WP2)
-                KeyBoard.append([InlineKeyboardButton(f"🔶Watermark Size - {size_tag}🔶", callback_data="lol-wsize")])
+                KeyBoard.append([InlineKeyboardButton(f"🔶Watermark Size - {str(watermark_size)}%🔶", callback_data="lol-wsize")])
                 WS1 = []
                 WS2 = []
                 WS3 = []
@@ -468,7 +435,7 @@ async def settings(_, message):
                     MP.append(keyboard)
                 KeyBoard.append(MP)
                 await message.reply_text(
-                        text="Here you can set your Watermark Settings:",
+                        text="Settings",
                         disable_web_page_preview=True,
                         reply_markup= InlineKeyboardMarkup(KeyBoard)
                         )

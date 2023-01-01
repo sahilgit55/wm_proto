@@ -6,6 +6,8 @@ from helper_fns.helper import USER_DATA, saveconfig
 
 ############Variables##############
 sudo_users = eval(Config.SUDO_USERS)
+wpositions = {'5:5': 'Set Top Left', 'main_w-overlay_w-5:5': 'Set Top Right', '5:main_h-overlay_h': 'Set Bottom Left', 'main_w-overlay_w-5:main_h-overlay_h-5': 'Set Bottom Right'}
+
 
 
 
@@ -19,12 +21,6 @@ async def newbt(client, callback_query):
         # await callback_query.message.delete()
         
         
-        # if txt.startswith(""):
-        #     await callback_query.answer(
-        #                 f'❗Login Has Expired, Try Login Again With /login.',
-        #                 show_alert=True
-        #             )
-        #     return
         if txt.startswith("position_") or txt.startswith("size_") or txt.startswith("wpreset_") or txt.startswith("mpreset_"):
                 new_position = txt.split("_", 1)[1]
                 if txt.startswith("position_"):
@@ -36,47 +32,14 @@ async def newbt(client, callback_query):
                 elif txt.startswith("mpreset_"):
                     await saveconfig(userx, 'muxer', 'preset', new_position)
                 watermark_position = USER_DATA()[userx]['watermark']['position']
-                if watermark_position == "5:main_h-overlay_h":
-                    position_tag = "Bottom Left"
-                elif watermark_position == "main_w-overlay_w-5:main_h-overlay_h-5":
-                    position_tag = "Bottom Right"
-                elif watermark_position == "main_w-overlay_w-5:5":
-                    position_tag = "Top Right"
-                elif watermark_position == "5:5":
-                    position_tag = "Top Left"
-                else:
-                    position_tag = "Top Left"
-
                 watermark_size = USER_DATA()[userx]['watermark']['size']
-                if int(watermark_size) == 5:
-                    size_tag = "5%"
-                elif int(watermark_size) == 7:
-                    size_tag = "7%"
-                elif int(watermark_size) == 10:
-                    size_tag = "10%"
-                elif int(watermark_size) == 15:
-                    size_tag = "15%"
-                elif int(watermark_size) == 20:
-                    size_tag = "20%"
-                elif int(watermark_size) == 25:
-                    size_tag = "25%"
-                elif int(watermark_size) == 30:
-                    size_tag = "30%"
-                elif int(watermark_size) == 35:
-                    size_tag = "35%"
-                elif int(watermark_size) == 40:
-                    size_tag = "40%"
-                elif int(watermark_size) == 45:
-                    size_tag = "45%"
-                else:
-                    size_tag = "7%"
                 watermark_preset = USER_DATA()[userx]['watermark']['preset']
                 muxer_preset = USER_DATA()[userx]['muxer']['preset']
                 positions = {'Set Top Left':"position_5:5", "Set Top Right": "position_main_w-overlay_w-5:5", "Set Bottom Left": "position_5:main_h-overlay_h", "Set Bottom Right": "position_main_w-overlay_w-5:main_h-overlay_h-5"}
                 sizes = [5,7,10,13,15,17,20,25,30,35,40,45]
                 pkeys = list(positions.keys())
                 KeyBoard = []
-                KeyBoard.append([InlineKeyboardButton(f"🔶Watermark Position - {position_tag}🔶", callback_data="lol-wposition")])
+                KeyBoard.append([InlineKeyboardButton(f"🔶Watermark Position - {wpositions[watermark_position]}🔶", callback_data="lol-wposition")])
                 WP1 = []
                 WP2 = []
                 zx = 1
@@ -94,7 +57,7 @@ async def newbt(client, callback_query):
                     zx+=1
                 KeyBoard.append(WP1)
                 KeyBoard.append(WP2)
-                KeyBoard.append([InlineKeyboardButton(f"🔶Watermark Size - {size_tag}🔶", callback_data="lol-wsize")])
+                KeyBoard.append([InlineKeyboardButton(f"🔶Watermark Size - {str(watermark_size)}%🔶", callback_data="lol-wsize")])
                 WS1 = []
                 WS2 = []
                 WS3 = []
@@ -137,13 +100,18 @@ async def newbt(client, callback_query):
                     keyboard = InlineKeyboardButton(datam, callback_data=f'mpreset_{str(pp)}')
                     MP.append(keyboard)
                 KeyBoard.append(MP)
-                await callback_query.message.edit(
-                    text="Settings",
-                    disable_web_page_preview=True,
-                    reply_markup=InlineKeyboardMarkup(KeyBoard))
-                # except Exception as e:
-                #     await callback_query.answer(
-                #         f'❗{str(e)}',
-                #         show_alert=True
-                #     )
-        return
+                try:
+                    await callback_query.message.edit(
+                        text="Settings",
+                        disable_web_page_preview=True,
+                        reply_markup=InlineKeyboardMarkup(KeyBoard))
+                except Exception as e:
+                    print(e)
+                return
+    
+        elif txt.startswith("lol"):
+            await callback_query.answer(
+                        f'⚡Nik66Bots⚡',
+                        show_alert=True
+                    )
+            return
