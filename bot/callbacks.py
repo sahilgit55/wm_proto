@@ -153,7 +153,7 @@ async def newbt(client, callback_query):
                             deleted.append(f)
                     else:
                         print(f)
-                        delete_all(f)
+                        await delete_all(f)
                         deleted.append(f)
                 text = f"✔Deleted {len(deleted)} objects 🚮\n\n{str(deleted)}"
                 try:
