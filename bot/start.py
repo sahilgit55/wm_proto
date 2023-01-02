@@ -1,7 +1,7 @@
 from pyrogram import Client,  filters
 from config import Config
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from helper_fns.helper import get_readable_time, USER_DATA, get_media, timex, delete_all, delete_trash, new_user, create_process_file, make_direc, durationx, clear_trash_list, check_filex
+from helper_fns.helper import get_readable_time, USER_DATA, get_media, timex, delete_all, delete_trash, new_user, create_process_file, make_direc, durationx, clear_trash_list, check_filex, save_restart
 from helper_fns.pbar import progress_bar
 from config import botStartTime
 from helper_fns.watermark import vidmarkx, hardmux_vidx, softmux_vidx, softremove_vidx
@@ -753,7 +753,7 @@ async def renew(_, message):
                 inline_keyboard.append(ikeyboard)
                 reply_markup = InlineKeyboardMarkup(inline_keyboard)
                 await message.reply_text(
-                    "Are you sure?\n🚫 This will delete all your downloads and saved watermark locally 🚫",
+                    "Are you sure?\n\n🚫 This will delete all your downloads and saved watermark locally 🚫",
                     reply_markup=reply_markup,
                     quote=True,
                 )
@@ -767,5 +767,6 @@ async def renew(_, message):
 async def restart(_, message):
     userx = message.from_user.id
     if userx in sudo_users:
-        await message.reply_text("♻Restarting...", True)
+        reply = await message.reply_text("♻Restarting...", True)
+        await save_restart(message.chat.id, reply.id)
         execl(executable, executable, *argv)

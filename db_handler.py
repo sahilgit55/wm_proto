@@ -62,7 +62,6 @@ class Database:
 
     async def get_data(self, id, colz):
         col = self.db[colz]
-        print("getting data")
         user = await col.find_one({'id': id})
         return user.get('data', None)
 

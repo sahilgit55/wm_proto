@@ -128,6 +128,30 @@ async def saveconfig(user_id, dname, pos, value):
         print(e)
         return False
     
+##########Save Restart Message Id###############
+async def save_restart(chat_id, msg_id):
+    try:
+        if 'restart' not in User_Data:
+            User_Data['restart'] = []
+            User_Data['restart'].append([chat_id, msg_id])
+        else:
+            User_Data['restart'].append([chat_id, msg_id])
+        data = await db.add_datam(str(User_Data), CREDIT, "User_Data")
+        return data
+    except Exception as e:
+        print(e)
+        return False
+    
+
+##########Clear Restart Message Id###############
+async def clear_restart():
+    try:
+        User_Data['restart'] = []
+        data = await db.add_datam(str(User_Data), CREDIT, "User_Data")
+        return data
+    except Exception as e:
+        print(e)
+        return False
 
 ##########Delete Token###############
 async def deleteconfig(user_id, dname, pos):
