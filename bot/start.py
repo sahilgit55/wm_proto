@@ -7,8 +7,7 @@ from helper_fns.pbar import progress_bar
 from config import botStartTime
 from hachoir.metadata import extractMetadata
 from hachoir.parser import createParser
-from helper_fns.watermark import vidmarkx, hardmux_vidx
-from helper_fns.muxer import softremove_vid, hardmux_vid, softmux_vid
+from helper_fns.watermark import vidmarkx, hardmux_vidx, softmux_vidx, softremove_vidx
 from string import ascii_lowercase, digits
 from random import choices
 from helper_fns.process import append_master_process, remove_master_process, get_master_process, append_sub_process, remove_sub_process, get_sub_process
@@ -226,7 +225,9 @@ async def process(bot, message):
                 return
         countx = 1
         failed = {}
-        success = {}
+        wfailed = {}
+        mfailed = {}
+        cancelled = {}
         process_id = str(''.join(choices(ascii_lowercase + digits, k=10)))
         append_master_process(process_id)
         mtime = timex()
@@ -268,9 +269,9 @@ async def process(bot, message):
                                 await create_process_file(progress)
                                 await delete_trash(output_vid)
                                 watermark_path = f'./watermark.jpg'
-                                preset = 'ultrafast'
-                                watermark_position = "5:5"
-                                watermark_size = "7"
+                                preset = USER_DATA()[userx]['watermark']['preset']
+                                watermark_position = USER_DATA()[userx]['watermark']['position']
+                                watermark_size = USER_DATA()[userx]['watermark']['size']
                                 datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🛺Adding Watermark', stime, mtime)
                                 try:
                                         output_vid_res = await vidmarkx(the_media, reply, progress, watermark_path, output_vid, duration, preset, watermark_position, watermark_size, datam,subprocess_id, process_id)
@@ -282,6 +283,12 @@ async def process(bot, message):
                                         continue
                                 await delete_trash(progress)
                                 if output_vid_res[0]:
+                                        if output_vid_res[1]:
+                                                if subprocess_id not in get_sub_process():
+                                                                cancelled[value] = data
+                                                                continue
+                                                if process_id not in get_master_process():
+                                                                break
                                         if data['sub']:
                                                 sid = data['sid']
                                                 subm = await bot.get_messages(chat_id, sid, replies=0)
@@ -303,23 +310,58 @@ async def process(bot, message):
                                                         continue
                                                 sub_mode = data['smode']
                                                 datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🎮Remuxing Subtitles', stime, mtime)
-                                                remux_preset =  'ultrafast'
+                                                remux_preset =  USER_DATA()[userx]['muxer']['preset']
                                                 await create_process_file(progress)
+                                                out_file = '.'.join(output_vid.split('.')[:-1])
                                                 if sub_mode=="softremove":
-                                                        output_vid = await softremove_vid(output_vid, sub_loc, reply)
+                                                        mux_output = out_file+'1.mkv'
+                                                        mux_res = await softremove_vidx(output_vid, sub_loc, mux_output, reply, subprocess_id, remux_preset, duration, progress, process_id, datam)
                                                 elif sub_mode=="softmux":
-                                                        output_vid = await softmux_vid(output_vid, sub_loc, reply)
+                                                        mux_output = out_file+'1.mkv'
+                                                        mux_res = await softmux_vidx(output_vid, sub_loc, mux_output, reply, subprocess_id, remux_preset, duration, progress, process_id, datam)
                                                 elif sub_mode=="hardmux":
-                                                        output_vid = await hardmux_vidx(output_vid, sub_loc, reply, subprocess_id, remux_preset, duration, progress, process_id, datam)
-                                        cc = "test"
+                                                        mux_output = out_file+'1.mp4'
+                                                        mux_res = await hardmux_vidx(output_vid, sub_loc, mux_output, reply, subprocess_id, remux_preset, duration, progress, process_id, datam)
+                                                if mux_res[0]:
+                                                        if mux_res[1]:
+                                                                if subprocess_id not in get_sub_process():
+                                                                                cancelled[value] = data
+                                                                                continue
+                                                                if process_id not in get_master_process():
+                                                                                break
+                                                        final_video = mux_output
+                                                        cc = f"{str(file_name)}\n\n✅watermark\n✅muxing"
+                                                else:
+                                                        final_video = output_vid
+                                                        cc = f"{str(file_name)}\n\n✅watermark\n❌muxing"
+                                        if data['thumb']:
+                                                thumb_id = data['tid']
+                                                thumbm = await bot.get_messages(chat_id, thumb_id, replies=0)
+                                                media = get_media(thumbm)
+                                                thumb_name = media.file_name
+                                                thumb_loc = f'./RAW/{thumb_name}'
+                                                start_time = timex()
+                                                datam = (thumb_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔽Downloading Thumbnail', '𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍𝚎𝚍')
+                                                thumbnail = await bot.download_media(
+                                                                message=thumbm ,
+                                                                file_name=thumb_loc,
+                                                                progress=progress_bar,
+                                                                progress_args=(reply,start_time,*datam)
+                                                        )
+                                                if thumbnail is None:
+                                                        final_thumb = './thumb.jpg'
+                                                else:
+                                                        final_thumb = thumb_loc
+                                        else:
+                                                        final_thumb = './thumb.jpg'
                                         datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔼Uploadinig', '𝚄𝚙𝚕𝚘𝚊𝚍𝚎𝚍')
                                         await bot.send_video(
                                                         chat_id=user_id,
-                                                        video=output_vid,
+                                                        video=final_video,
                                                         caption=cc,
                                                         supports_streaming=True,
                                                         duration=duration,
-                                                        thumb='./thumb.jpg',
+                                                        thumb=final_thumb,
                                                         progress=progress_bar,
                                                         progress_args=(reply,start_time, *datam))
                 else:

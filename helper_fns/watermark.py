@@ -18,7 +18,7 @@ from os.path import getsize
 all_data = []
 msg_data = ['Processing']
 running_process = []
-
+wpositions = {'5:5': 'Set Top Left', 'main_w-overlay_w-5:5': 'Set Top Right', '5:main_h-overlay_h': 'Set Bottom Left', 'main_w-overlay_w-5:main_h-overlay_h-5': 'Set Bottom Right'}
 
 
 #############Checker################
@@ -85,6 +85,10 @@ async def update_message(working_dir, COMPRESSION_START_TIME, total_time, mode,m
     if position in muxing:
         position = f'🧬Mode: {str(position)}'
     else:
+        try:
+            position = wpositions[position]
+        except:
+            position = position
         position = f'🧬Position: {str(position)}'
     while True:
             await assleep(5)
@@ -160,44 +164,6 @@ async def update_message(working_dir, COMPRESSION_START_TIME, total_time, mode,m
                                                 print(e)
     return Cancel
 
-######################WaterMark#############################
-async def vidmark(the_media, message, working_dir, watermark_path, output_vid, total_time, mode, position, size, datam):
-    global all_data
-    global msg_data
-    all_data = []
-    msg_data = ['Processing']
-    COMPRESSION_START_TIME = time.time()
-    cmd = f"""ffmpeg -hide_banner -progress {working_dir} -i {the_media} -i {watermark_path} -filter_complex "[1][0]scale2ref=w='iw*{size}/100':h='ow/mdar'[wm][vid];[vid][wm]overlay={position}" -preset {mode} -codec:a copy {output_vid}"""
-    print(cmd)
-    process = await create_subprocess_shell(cmd, limit = 1024 * 128, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
-    pid = process.pid
-    await assleep(2)
-    task = await create_backgroud_task(update_message(working_dir, COMPRESSION_START_TIME, total_time, mode, message, position, pid, datam))
-    while True:
-            try:
-                    async for line in process.stdout:
-                                line = line.decode('utf-8').strip()
-                                print(line)
-                                all_data.append(line)
-                                if len(line)<3800:
-                                    msg_data[-1] = line
-            except ValueError:
-                    continue
-            else:
-                    break
-    await process.communicate()
-    try:
-        task.cancelled()
-    except Exception as e:
-        print(e)
-    await delete_trash(working_dir)
-    if os.path.lexists(output_vid):
-        return [True]
-    else:
-        return [False, all_data]
-
-
-
 
 #############Generating Screenshoot######################
 async def take_screen_shot(video_file, output_directory, ttl):
@@ -235,6 +201,7 @@ async def take_screen_shot(video_file, output_directory, ttl):
 async def vidmarkx(the_media, msg, working_dir, watermark_path, output_vid, total_time, mode, position, size, datam, subprocess_id, process_id):
     global all_data
     global msg_data
+    Cancel = False
     all_data = []
     msg_data = ['Processing']
     COMPRESSION_START_TIME = time.time()
@@ -290,26 +257,33 @@ async def vidmarkx(the_media, msg, working_dir, watermark_path, output_vid, tota
             print("🔶Logger Cancelled")
     except Exception as e:
             print(e)
-    if return_code == 0:
-        return [True]
+    if subprocess_id not in get_sub_process():
+                Cancel = True
+                print("🔶Task Cancelled Watermark")
+    if process_id not in get_master_process():
+                Cancel = True
+                print("🔶Task Cancelled Watermark")
+    if Cancel:
+        return [True, True]
+    elif return_code == 0:
+        return [True, False]
     else:
         return [False, all_data]
 
 
     
-###################Hard Remuxing########################
-async def hardmux_vidx(vid_filename, sub_filename, msg, subprocess_id, preset, duration, progress, process_id, datam):
+###################HardMuxing########################
+async def hardmux_vidx(vid_filename, sub_filename, output, msg, subprocess_id, preset, duration, progress, process_id, datam):
     global all_data
     global msg_data
+    Cancel = False
     all_data = []
     msg_data = ['Processing']
     COMPRESSION_START_TIME = time.time()
-    out_file = '.'.join(vid_filename.split('.')[:-1])
-    output = out_file+'1.mp4'
     command = [
             'ffmpeg','-hide_banner',
             '-progress', progress, '-i', vid_filename,
-            '-vf','subtitles='+sub_filename,
+            '-vf', f"subtitles='{sub_filename}'",
             '-c:v','h264',
             '-map','0:v:0',
             '-map','0:a:0?',
@@ -364,7 +338,185 @@ async def hardmux_vidx(vid_filename, sub_filename, msg, subprocess_id, preset, d
             print("🔶Logger Cancelled")
     except Exception as e:
             print(e)
+    if subprocess_id not in get_sub_process():
+                Cancel = True
+                print("🔶Task Cancelled HardMuxing")
+    if process_id not in get_master_process():
+                Cancel = True
+                print("🔶Task Cancelled HardMuxing")
+    if Cancel:
+        return [True, True]
     if return_code == 0:
-        return [True, output]
+        return [True, False]
+    else:
+        return [False, all_data]
+    
+    
+    
+
+
+###################Soft Muxing########################
+async def softmux_vidx(vid_filename, sub_filename, output, msg, subprocess_id, preset, duration, progress, process_id, datam):
+    global all_data
+    global msg_data
+    Cancel = False
+    all_data = []
+    msg_data = ['Processing']
+    COMPRESSION_START_TIME = time.time()
+    command = [
+            'ffmpeg','-hide_banner',
+            '-progress', progress, '-i', vid_filename,
+            '-i',sub_filename,
+            '-map','1:0','-map','0',
+            '-disposition:s:0','default',
+            '-c:v','copy',
+            '-c:a','copy',
+            '-c:s','copy',
+            '-y',output
+            ]
+
+    process = await asyncio.create_subprocess_exec(
+            *command,
+            # stdout must a pipe to be accessible as process.stdout
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            )
+    pid = process.pid
+    running_process.append(pid)
+    task = asyncio.create_task(check_task(subprocess_id, pid, process_id))
+    log_task = asyncio.create_task(get_logs(process.stderr,subprocess_id, pid, process_id))
+    update_msg = asyncio.create_task(update_message(progress, COMPRESSION_START_TIME, duration, preset, msg, 'SoftMux', pid, datam, vid_filename, output, subprocess_id, process_id))
+    done, pending = await asyncio.wait([task, process.wait()], return_when=asyncio.FIRST_COMPLETED)
+    print("🔶SoftMuxing Process Completed")
+    return_code = process.returncode
+    running_process.remove(pid)
+    print("🔶SoftMuxing Return Code", return_code)
+    if task not in pending:
+                try:
+                        print("🔶Terminating Process")
+                        process.terminate()
+                        print("🔶Process Terminated")
+                except Exception as e:
+                        print(e)
+    else:
+                try:
+                        print("🔶Cancelling Task")
+                        task.cancelled()
+                        print("🔶Awaiting Task")
+                        await task
+                        print("🔶Checker Task Cancelled")
+                except Exception as e:
+                        print(e)
+    try:
+            print("🔶Cancelling Message Updater")
+            update_msg.cancelled()
+            print("🔶Awaiting Message Updater")
+            await update_msg
+            print("🔶Message Updater Cancelled")
+    except Exception as e:
+            print(e)
+    try:
+            print("🔶Cancelling Logger")
+            log_task.cancelled()
+            print("🔶Awaiting Logger")
+            await log_task
+            print("🔶Logger Cancelled")
+    except Exception as e:
+            print(e)
+    if subprocess_id not in get_sub_process():
+                Cancel = True
+                print("🔶Task Cancelled SoftMuxing")
+    if process_id not in get_master_process():
+                Cancel = True
+                print("🔶Task Cancelled SoftMuxing")
+    if Cancel:
+        return [True, True]
+    if return_code == 0:
+        return [True, False]
+    else:
+        return [False, all_data]
+    
+
+
+###################Softremove Muxing########################
+async def softremove_vidx(vid_filename, sub_filename, output, msg, subprocess_id, preset, duration, progress, process_id, datam):
+    global all_data
+    global msg_data
+    Cancel = False
+    all_data = []
+    msg_data = ['Processing']
+    COMPRESSION_START_TIME = time.time()
+    command = [
+            'ffmpeg','-hide_banner',
+            '-progress', progress, '-i', vid_filename,
+            '-i',sub_filename,
+            '-map','0:v:0',
+            '-map','0:a?',
+            '-map','1:0',
+            '-disposition:s:0','default',
+            '-c:v','copy',
+            '-c:a','copy',
+            '-c:s','copy',
+            '-y',output
+            ]
+
+    process = await asyncio.create_subprocess_exec(
+            *command,
+            # stdout must a pipe to be accessible as process.stdout
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            )
+    pid = process.pid
+    running_process.append(pid)
+    task = asyncio.create_task(check_task(subprocess_id, pid, process_id))
+    log_task = asyncio.create_task(get_logs(process.stderr,subprocess_id, pid, process_id))
+    update_msg = asyncio.create_task(update_message(progress, COMPRESSION_START_TIME, duration, preset, msg, 'Softremove', pid, datam, vid_filename, output, subprocess_id, process_id))
+    done, pending = await asyncio.wait([task, process.wait()], return_when=asyncio.FIRST_COMPLETED)
+    print("🔶SoftremoveMuxing Process Completed")
+    return_code = process.returncode
+    running_process.remove(pid)
+    print("🔶SoftremoveMuxing Return Code", return_code)
+    if task not in pending:
+                try:
+                        print("🔶Terminating Process")
+                        process.terminate()
+                        print("🔶Process Terminated")
+                except Exception as e:
+                        print(e)
+    else:
+                try:
+                        print("🔶Cancelling Task")
+                        task.cancelled()
+                        print("🔶Awaiting Task")
+                        await task
+                        print("🔶Checker Task Cancelled")
+                except Exception as e:
+                        print(e)
+    try:
+            print("🔶Cancelling Message Updater")
+            update_msg.cancelled()
+            print("🔶Awaiting Message Updater")
+            await update_msg
+            print("🔶Message Updater Cancelled")
+    except Exception as e:
+            print(e)
+    try:
+            print("🔶Cancelling Logger")
+            log_task.cancelled()
+            print("🔶Awaiting Logger")
+            await log_task
+            print("🔶Logger Cancelled")
+    except Exception as e:
+            print(e)
+    if subprocess_id not in get_sub_process():
+                Cancel = True
+                print("🔶Task Cancelled SoftremoveMuxing")
+    if process_id not in get_master_process():
+                Cancel = True
+                print("🔶Task Cancelled SoftremoveMuxing")
+    if Cancel:
+        return [True, True]
+    if return_code == 0:
+        return [True, False]
     else:
         return [False, all_data]
