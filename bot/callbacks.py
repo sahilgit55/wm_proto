@@ -169,3 +169,9 @@ async def newbt(client, callback_query):
                         f"Nothing to clear 🙄",
                         show_alert=True)
             return
+        
+        elif txt.startswith("notdelete"):
+            await callback_query.answer(
+                        f"Ok Dont Waste My Time😂",
+                        show_alert=True)
+            return

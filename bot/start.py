@@ -753,7 +753,7 @@ async def renew(_, message):
                 inline_keyboard.append(ikeyboard)
                 reply_markup = InlineKeyboardMarkup(inline_keyboard)
                 await message.reply_text(
-                    "Are you sure? 🚫 This will delete all your downloads and saved watermark locally 🚫",
+                    "Are you sure?\n🚫 This will delete all your downloads and saved watermark locally 🚫",
                     reply_markup=reply_markup,
                     quote=True,
                 )
