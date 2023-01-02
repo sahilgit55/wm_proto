@@ -733,3 +733,26 @@ async def watermark(client, message):
                     print(e)
                     await client.send_message(user_id, "🔃Tasked Has Been Cancelled.")
     return
+
+
+#########Renew _Bot#############
+@Client.on_message(filters.command(["renew"]))
+async def renew(_, message):
+    userx = message.from_user.id
+    if userx in sudo_users:
+                inline_keyboard = []
+                ikeyboard = []
+                ikeyboard.append(
+                    InlineKeyboardButton("Yes 🚫", callback_data=("renewme").encode("UTF-8"))
+                )
+                ikeyboard.append(
+                    InlineKeyboardButton("No 😓", callback_data=("notdelete").encode("UTF-8"))
+                )
+                inline_keyboard.append(ikeyboard)
+                reply_markup = InlineKeyboardMarkup(inline_keyboard)
+                await message.reply_text(
+                    "Are you sure? 🚫 This will delete all your downloads and saved watermark locally 🚫",
+                    reply_markup=reply_markup,
+                    quote=True,
+                )
+                return

@@ -1,7 +1,11 @@
 from pyrogram import Client
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import Config
-from helper_fns.helper import USER_DATA, saveconfig, check_filex
+from helper_fns.helper import USER_DATA, saveconfig, check_filex, delete_all, delete_trash
+from os import listdir
+from os.path import isfile
+
+
 
 
 ############Variables##############
@@ -133,4 +137,35 @@ async def newbt(client, callback_query):
                                 f'⚡Nik66Bots⚡',
                                 show_alert=True
                             )
+            return
+        elif txt == "renewme":
+            await callback_query.message.delete()
+            g_d_list = ['db_handler.py', 'config.py', 'bot', 'requirements.txt', 'Dockerfile', 'config.env', 'helper_fns', 'docker-compose.yml', 'thumb.jpg', 'main.py']
+            g_list = listdir()
+            g_del_list = list(set(g_list) - set(g_d_list))
+            deleted = []
+            if len(g_del_list) != 0:
+                for f in g_del_list:
+                    if isfile(f):
+                        if not(f.endswith(".session")) and not(f.endswith(".session-journal")):
+                            print(f)
+                            await delete_trash(f)
+                            deleted.append(f)
+                    else:
+                        print(f)
+                        delete_all(f)
+                        deleted.append(f)
+                text = f"✔Deleted {len(deleted)} objects 🚮\n\n{str(deleted)}"
+                try:
+                        await callback_query.answer(
+                                text,
+                                show_alert=True)
+                except:
+                    await client.send_message(chat_id=user_id,
+                            text=text)
+                    
+            else:
+                await callback_query.answer(
+                        f"Nothing to clear 🙄",
+                        show_alert=True)
             return
