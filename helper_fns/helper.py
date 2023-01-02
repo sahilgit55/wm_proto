@@ -2,10 +2,12 @@ from config import Config
 from db_handler import Database
 from time import time
 from config import botStartTime
-from os import remove
+from os import remove, mkdir
 from shutil import rmtree
 from asyncio import get_event_loop
-from os.path import exists
+from os.path import exists, isdir
+from subprocess import PIPE as subprocessPIPE, STDOUT as subprocessSTDOUT
+from subprocess import run as subprocessrun
 
 
 db = Database()
@@ -160,14 +162,14 @@ def get_media(message):
 async def delete_trash(file):
     try:
         remove(file)
-    except Exception as e:
-        print(e)
+    except:
+        pass
 
 async def delete_all(dir):
     try:
         rmtree(dir)
-    except Exception as e:
-        print(e)
+    except:
+        pass
         
         
 ########Background#############
@@ -177,9 +179,37 @@ async def create_backgroud_task(x):
 
 
 #########Process FFmpeg##########
-
 async def create_process_file(file):
     if exists(file):
         remove(file)
     with open(file, 'w') as fp:
             pass
+        
+
+#######Make Dir############
+async def make_direc(direc):
+    try:
+        if not isdir(direc):
+            mkdir(direc)
+    except:
+        pass
+    return
+
+
+#######get media duration######
+def durationx(filename):
+    result = subprocessrun(["ffprobe", "-v", "error", "-show_entries",
+                             "format=duration", "-of",
+                             "default=noprint_wrappers=1:nokey=1", filename],
+        stdout=subprocessPIPE,
+        stderr=subprocessSTDOUT)
+    return float(result.stdout)
+
+
+#######cleartrashlist########
+async def clear_trash_list(trash_list):
+    for t in trash_list:
+            try:
+                remove(t)
+            except:
+                pass

@@ -18,7 +18,7 @@ from os.path import getsize
 all_data = []
 msg_data = ['Processing']
 running_process = []
-wpositions = {'5:5': 'Set Top Left', 'main_w-overlay_w-5:5': 'Set Top Right', '5:main_h-overlay_h': 'Set Bottom Left', 'main_w-overlay_w-5:main_h-overlay_h-5': 'Set Bottom Right'}
+wpositions = {'5:5': 'Top Left', 'main_w-overlay_w-5:5': 'Top Right', '5:main_h-overlay_h': 'Bottom Left', 'main_w-overlay_w-5:main_h-overlay_h-5': 'Bottom Right'}
 
 
 #############Checker################
@@ -130,7 +130,7 @@ async def update_message(working_dir, COMPRESSION_START_TIME, total_time, mode,m
                                     if len(bitrate):
                                         bitrate = bitrate[-1].strip()
                                     else:
-                                        bitrate = "0kbits/s"
+                                        bitrate = "0"
                                     if len(fps):
                                         fps = fps[-1].strip()
                                     else:
@@ -153,7 +153,7 @@ async def update_message(working_dir, COMPRESSION_START_TIME, total_time, mode,m
                                         logs = msg_data[-1]
                                     if len(logs)>3800:
                                         logs = msg_data[-1]
-                                    pro_bar = f"{str(ptype)} ({opt})\n🎟️File: {name}\n🧶Remaining: {str(remnx)}\n{str(position)}\n♒Preset: {mode}\n🧭Duration: {get_readable_time(total_time)}\n💽In Size: {str(infilesize)}\n\n\n{progressx}\n\n ┌ 𝙿𝚛𝚘𝚐𝚛𝚎𝚜𝚜:【 {perc} 】\n ├ 𝚂𝚙𝚎𝚎𝚍:【 {speed}x 】\n ├ 𝙱𝚒𝚝𝚛𝚊𝚝𝚎:【 {bitrate} kbits/s 】\n ├ 𝙵𝙿𝚂:【 {fps} 】\n ├ 𝚁𝚎𝚖𝚊𝚒𝚗𝚒𝚗𝚐:【 {get_readable_time((total_time - elapsed_time))} 】\n └ 𝙿𝚛𝚘𝚌𝚎𝚜𝚜𝚎𝚍:【 {str(out_time)} 】\n\n\n⚡️●●●● 𝙿𝚛𝚘𝚌𝚎𝚜𝚜 ●●●●⚡️\n\n⚙{str(logs)}\n\n\n💾Ot Size: {str(get_human_size(getsize(out_file)))}\n⏰️ETA: {ETA}\n⛓Ex Time: {str(execution_time)}\n🔸Sp Time: {str(sptime)}\n🔹Mp Time: {str(mptime)}\n♥️Bot Uptime: {str(botupt)}\n{str(ctext)}\n{str(ptext)}"
+                                    pro_bar = f"{str(ptype)} ({opt})\n🎟️File: {name}\n🧶Remaining: {str(remnx)}\n{str(position)}\n♒Preset: {mode}\n🧭Duration: {get_readable_time(total_time)}\n💽In Size: {str(infilesize)}\n\n\n{progressx}\n\n ┌ 𝙿𝚛𝚘𝚐𝚛𝚎𝚜𝚜:【 {perc} 】\n ├ 𝚂𝚙𝚎𝚎𝚍:【 {speed}x 】\n ├ 𝙱𝚒𝚝𝚛𝚊𝚝𝚎:【 {bitrate}kbits/s 】\n ├ 𝙵𝙿𝚂:【 {fps} 】\n ├ 𝚁𝚎𝚖𝚊𝚒𝚗𝚒𝚗𝚐:【 {get_readable_time((total_time - elapsed_time))} 】\n └ 𝙿𝚛𝚘𝚌𝚎𝚜𝚜𝚎𝚍:【 {str(out_time)} 】\n\n\n⚡️●●●● 𝙿𝚛𝚘𝚌𝚎𝚜𝚜 ●●●●⚡️\n\n⚙{str(logs)}\n\n\n💾Ot Size: {str(get_human_size(getsize(out_file)))}\n⏰️ETA: {ETA}\n⛓Ex Time: {str(execution_time)}\n🔸Sp Time: {str(sptime)}\n🔹Mp Time: {str(mptime)}\n♥️Bot Uptime: {str(botupt)}\n{str(ctext)}\n{str(ptext)}"
                                     if txt!=pro_bar:
                                             txt=pro_bar
                                             try:
@@ -284,11 +284,10 @@ async def hardmux_vidx(vid_filename, sub_filename, output, msg, subprocess_id, p
             'ffmpeg','-hide_banner',
             '-progress', progress, '-i', vid_filename,
             '-vf', f"subtitles='{sub_filename}'",
-            '-c:v','h264',
             '-map','0:v:0',
             '-map','0:a:0?',
             '-preset', preset,
-            '-y',output
+            '-c:a','copy', output
             ]
     process = await asyncio.create_subprocess_exec(
             *command,

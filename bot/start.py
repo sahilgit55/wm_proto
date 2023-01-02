@@ -2,7 +2,7 @@ from pyrogram import Client,  filters
 from time import time
 from config import Config
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from helper_fns.helper import get_readable_time, saveconfig, deleteconfig, USER_DATA, get_media, timex, delete_all, delete_trash, new_user, create_process_file
+from helper_fns.helper import get_readable_time, saveconfig, deleteconfig, USER_DATA, get_media, timex, delete_all, delete_trash, new_user, create_process_file, make_direc, durationx, clear_trash_list
 from helper_fns.pbar import progress_bar
 from config import botStartTime
 from hachoir.metadata import extractMetadata
@@ -10,6 +10,8 @@ from hachoir.parser import createParser
 from helper_fns.watermark import vidmarkx, hardmux_vidx, softmux_vidx, softremove_vidx
 from string import ascii_lowercase, digits
 from random import choices
+from asyncio import sleep as asynciosleep
+from pyrogram.errors import FloodWait
 from helper_fns.process import append_master_process, remove_master_process, get_master_process, append_sub_process, remove_sub_process, get_sub_process
 
 
@@ -17,7 +19,7 @@ from helper_fns.process import append_master_process, remove_master_process, get
 ############Variables##############
 sudo_users = eval(Config.SUDO_USERS)
 USER = Config.USER
-wpositions = {'5:5': 'Set Top Left', 'main_w-overlay_w-5:5': 'Set Top Right', '5:main_h-overlay_h': 'Set Bottom Left', 'main_w-overlay_w-5:main_h-overlay_h-5': 'Set Bottom Right'}
+wpositions = {'5:5': 'Top Left', 'main_w-overlay_w-5:5': 'Top Right', '5:main_h-overlay_h': 'Bottom Left', 'main_w-overlay_w-5:main_h-overlay_h-5': 'Bottom Right'}
 
 
 ################Start####################
@@ -223,6 +225,7 @@ async def process(bot, message):
         if limit_to>len(dic):
                 await bot.send_message(user_id, "❗Invalied Values.")
                 return
+        
         countx = 1
         failed = {}
         wfailed = {}
@@ -231,9 +234,16 @@ async def process(bot, message):
         process_id = str(''.join(choices(ascii_lowercase + digits, k=10)))
         append_master_process(process_id)
         mtime = timex()
+        Ddir = f'./{str(userx)}_RAW'
+        Wdir = f'./{str(userx)}_WORKING'
+        watermark_path = f'./{str(userx)}_watermark.jpg'
+        await make_direc(Ddir)
+        await make_direc(Wdir)
         for i in range(limit, limit_to):
+                trash_list = []
                 if process_id in get_master_process():
                                 stime = timex()
+                                send_file = False
                                 subprocess_id = str(''.join(choices(ascii_lowercase + digits, k=10)))
                                 append_sub_process(subprocess_id)
                                 remnx = str((limit_to-limit)-countx)
@@ -243,32 +253,59 @@ async def process(bot, message):
                                 chat_id = data['chat']
                                 m = await bot.get_messages(chat_id, vid, replies=0)
                                 media = get_media(m)
-                                file_name = media.file_name
-                                dl_loc = f'./RAW/{file_name}'
+                                file_name = media.file_name.replace(' ', '')
+                                dl_loc = f'{Ddir}/{str(userx)}_{str(file_name)}'
                                 start_time = timex()
-                                datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔽Downloading Video', '𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍𝚎𝚍')
+                                datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔽Downloading Video', '𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍𝚎𝚍', stime, mtime)
                                 reply = await bot.send_message(chat_id=user_id,
                                                         text=f"🔽Starting Download ({str(countx)}/{str(limit_to-limit)})\n🎟️File: {file_name}\n🧶Remaining: {str(remnx)}")
-                                the_media = await bot.download_media(
-                                                message=m,
-                                                file_name=dl_loc,
-                                                progress=progress_bar,
-                                                progress_args=(reply,start_time,*datam)
-                                        )
+                                the_media = None
+                                try:
+                                        the_media = await bot.download_media(
+                                                        message=m,
+                                                        file_name=dl_loc,
+                                                        progress=progress_bar,
+                                                        progress_args=(reply,start_time, bot, subprocess_id, process_id, *datam)
+                                                )
+                                except FloodWait as e:
+                                                await asynciosleep(int(e.value)+10)
+                                                the_media = await bot.download_media(
+                                                        message=m,
+                                                        file_name=dl_loc,
+                                                        progress=progress_bar,
+                                                        progress_args=(reply,start_time,*datam)
+                                                )
+                                except Exception as e:
+                                                if subprocess_id not in get_sub_process():
+                                                                                cancelled[value] = data
+                                                                                await delete_trash(the_media)
+                                                                                continue
+                                                if process_id not in get_master_process():
+                                                                                await delete_trash(the_media)
+                                                                                break
+                                                await reply.edit(f"❗Unable to Download Media!\n\n{str(e)}\n\n{str(data)}")
+                                                await delete_trash(the_media)
+                                                failed[value] = data
+                                                continue
+                                trash_list.append(the_media)
+                                if subprocess_id not in get_sub_process():
+                                                                                cancelled[value] = data
+                                                                                await clear_trash_list(trash_list)
+                                                                                continue
+                                if process_id not in get_master_process():
+                                                                                await clear_trash_list(trash_list)
+                                                                                break
                                 if the_media is None:
                                         await delete_trash(the_media)
-                                        await reply.edit(f"❗Unable to Download Media!\n\n{str(err)}\n\n{str(data)}")
+                                        await reply.edit(f"❗Unable to Download Media!")
                                         failed[value] = data
                                         continue
                                 duration = 0
-                                metadata = extractMetadata(createParser(the_media))
-                                if metadata.has("duration"):
-                                        duration = metadata.get('duration').seconds
-                                output_vid = f"./{str(file_name)}"
-                                progress = f"./{str(file_name)}_progress.txt"
+                                duration = durationx(the_media)
+                                output_vid = f"{Wdir}/{str(userx)}_{str(file_name)}"
+                                progress = f"{Wdir}/{str(userx)}_{str(file_name)}_progress.txt"
                                 await create_process_file(progress)
                                 await delete_trash(output_vid)
-                                watermark_path = f'./watermark.jpg'
                                 preset = USER_DATA()[userx]['watermark']['preset']
                                 watermark_position = USER_DATA()[userx]['watermark']['position']
                                 watermark_size = USER_DATA()[userx]['watermark']['size']
@@ -276,70 +313,95 @@ async def process(bot, message):
                                 try:
                                         output_vid_res = await vidmarkx(the_media, reply, progress, watermark_path, output_vid, duration, preset, watermark_position, watermark_size, datam,subprocess_id, process_id)
                                 except Exception as err:
-                                        await reply.edit(f"❗Unable to add Watermark!\n\n{str(err)}\n\n{str(data)}")
-                                        await delete_all("./RAW")
-                                        await delete_trash(progress)
-                                        failed[value] = data
-                                        continue
+                                        await bot.send_message(chat_id=user_id,
+                                                        text=f"❗Unable to add Watermark!\n\n{str(err)}\n\n{str(data)}")
+                                        wfailed[value] = data
+                                        await delete_trash(output_vid)
+                                trash_list.append(output_vid)
                                 await delete_trash(progress)
                                 if output_vid_res[0]:
                                         if output_vid_res[1]:
                                                 if subprocess_id not in get_sub_process():
                                                                 cancelled[value] = data
+                                                                await clear_trash_list(trash_list)
                                                                 continue
                                                 if process_id not in get_master_process():
+                                                                await clear_trash_list(trash_list)
                                                                 break
-                                        if data['sub']:
-                                                sid = data['sid']
-                                                subm = await bot.get_messages(chat_id, sid, replies=0)
-                                                media = get_media(subm)
-                                                sub_name = media.file_name
-                                                sub_loc = f'./RAW/{sub_name}'
-                                                start_time = timex()
-                                                datam = (sub_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔽Downloading Subtitle', '𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍𝚎𝚍')
-                                                subtitle = await bot.download_media(
-                                                                message=subm,
-                                                                file_name=sub_loc,
-                                                                progress=progress_bar,
-                                                                progress_args=(reply,start_time,*datam)
-                                                        )
-                                                if subtitle is None:
-                                                        await delete_trash(subtitle)
-                                                        await reply.edit(f"❗Unable to Download Subtitle!\n\n{str(err)}\n\n{str(data)}")
-                                                        failed[value] = data
-                                                        continue
+                                        send_file = True
+                                        final_video = output_vid
+                                        WP = True
+                                        cc = f"{str(file_name)}\n\n✅watermark"
+                                else:
+                                        wfailed[value] = data
+                                        output_vid = the_media
+                                        WP = False
+                                        cc = f"{str(file_name)}\n\n❌watermark"
+                                if data['sub']:
+                                        sid = data['sid']
+                                        subm = await bot.get_messages(chat_id, sid, replies=0)
+                                        media = get_media(subm)
+                                        sub_name = media.file_name.replace(' ', '')
+                                        sub_loc = f'./{Ddir}/{str(userx)}_{str(sub_name)}'
+                                        start_time = timex()
+                                        datam = (sub_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔽Downloading Subtitle', '𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍𝚎𝚍')
+                                        subtitle = await bot.download_media(
+                                                        message=subm,
+                                                        file_name=sub_loc,
+                                                        progress=progress_bar,
+                                                        progress_args=(reply,start_time,*datam)
+                                                )
+                                        if subtitle is None:
+                                                await delete_trash(subtitle)
+                                                await reply.edit(f"❗Unable to Download Subtitle!\n\n{str(err)}\n\n{str(data)}")
+                                                mfailed[value] = data
+                                        else:
+                                                trash_list.append(subtitle)
                                                 sub_mode = data['smode']
                                                 datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🎮Remuxing Subtitles', stime, mtime)
                                                 remux_preset =  USER_DATA()[userx]['muxer']['preset']
                                                 await create_process_file(progress)
                                                 out_file = '.'.join(output_vid.split('.')[:-1])
                                                 if sub_mode=="softremove":
-                                                        mux_output = out_file+'1.mkv'
+                                                        mux_output = f'./{Wdir}/{str(userx)}_'+out_file+'1.mkv'
                                                         mux_res = await softremove_vidx(output_vid, sub_loc, mux_output, reply, subprocess_id, remux_preset, duration, progress, process_id, datam)
                                                 elif sub_mode=="softmux":
-                                                        mux_output = out_file+'1.mkv'
+                                                        mux_output = f'./{Wdir}/{str(userx)}_'+out_file+'1.mkv'
                                                         mux_res = await softmux_vidx(output_vid, sub_loc, mux_output, reply, subprocess_id, remux_preset, duration, progress, process_id, datam)
                                                 elif sub_mode=="hardmux":
-                                                        mux_output = out_file+'1.mp4'
+                                                        mux_output = f'./{Wdir}/{str(userx)}_'+out_file+'1.mp4'
                                                         mux_res = await hardmux_vidx(output_vid, sub_loc, mux_output, reply, subprocess_id, remux_preset, duration, progress, process_id, datam)
                                                 if mux_res[0]:
                                                         if mux_res[1]:
                                                                 if subprocess_id not in get_sub_process():
                                                                                 cancelled[value] = data
+                                                                                await clear_trash_list(trash_list)
                                                                                 continue
                                                                 if process_id not in get_master_process():
+                                                                                await clear_trash_list(trash_list)
                                                                                 break
                                                         final_video = mux_output
-                                                        cc = f"{str(file_name)}\n\n✅watermark\n✅muxing"
+                                                        trash_list.append(mux_output)
+                                                        send_file = True
+                                                        if WP:
+                                                                cc = f"{str(file_name)}\n\n✅watermark\n✅{str(sub_mode)}"
+                                                        else:
+                                                                cc = f"{str(file_name)}\n\n❌watermark\n✅{str(sub_mode)}"
                                                 else:
+                                                        await delete_trash(subtitle)
+                                                        await delete_trash(mux_output)
                                                         final_video = output_vid
-                                                        cc = f"{str(file_name)}\n\n✅watermark\n❌muxing"
+                                                        if WP:
+                                                                cc = f"{str(file_name)}\n\n✅watermark\n❌{str(sub_mode)}"
+                                                        else:
+                                                                cc = f"{str(file_name)}\n\n❌watermark\n❌{str(sub_mode)}"
+                                if send_file:
                                         if data['thumb']:
                                                 thumb_id = data['tid']
                                                 thumbm = await bot.get_messages(chat_id, thumb_id, replies=0)
                                                 media = get_media(thumbm)
-                                                thumb_name = media.file_name
-                                                thumb_loc = f'./RAW/{thumb_name}'
+                                                thumb_name = media.file_name.replace(' ', '')
+                                                thumb_loc = f'./{Ddir}/{str(userx)}_{thumb_name}'
                                                 start_time = timex()
                                                 datam = (thumb_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔽Downloading Thumbnail', '𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍𝚎𝚍')
                                                 thumbnail = await bot.download_media(
@@ -352,19 +414,45 @@ async def process(bot, message):
                                                         final_thumb = './thumb.jpg'
                                                 else:
                                                         final_thumb = thumb_loc
+                                                        trash_list.append(thumb_loc)
                                         else:
                                                         final_thumb = './thumb.jpg'
-                                        datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔼Uploadinig', '𝚄𝚙𝚕𝚘𝚊𝚍𝚎𝚍')
-                                        await bot.send_video(
-                                                        chat_id=user_id,
-                                                        video=final_video,
-                                                        caption=cc,
-                                                        supports_streaming=True,
-                                                        duration=duration,
-                                                        thumb=final_thumb,
-                                                        progress=progress_bar,
-                                                        progress_args=(reply,start_time, *datam))
+                                        datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🔼Uploadinig', '𝚄𝚙𝚕𝚘𝚊𝚍𝚎𝚍', stime, mtime)
+                                        try:
+                                                await bot.send_video(
+                                                                chat_id=user_id,
+                                                                video=final_video,
+                                                                caption=cc,
+                                                                supports_streaming=True,
+                                                                duration=duration,
+                                                                thumb=final_thumb,
+                                                                progress=progress_bar,
+                                                                progress_args=(reply, start_time, bot, subprocess_id, process_id, *datam))
+                                        except FloodWait as e:
+                                                await asynciosleep(int(e.value)+10)
+                                                await bot.send_video(
+                                                                chat_id=user_id,
+                                                                video=final_video,
+                                                                caption=cc,
+                                                                supports_streaming=True,
+                                                                duration=duration,
+                                                                thumb=final_thumb,
+                                                                progress=progress_bar,
+                                                                progress_args=(reply, start_time, bot, subprocess_id, process_id, *datam))
+                                        except Exception as e:
+                                                await bot.send_message(chat_id=user_id,
+                                                        text=f"❗Unable to Upload Media!\n\n{str(e)}\n\n{str(data)}")
+                                                failed[value] = data
+                                await clear_trash_list(trash_list)
                 else:
+                        try:
+                                await reply.delete()
+                        except:
+                                pass
+                        await delete_all(Ddir)
+                        await delete_all(Wdir)
+                        await bot.send_message(chat_id=user_id,
+                                                        text=f"🔒Task Cancelled By User")
                         break
         return
 
