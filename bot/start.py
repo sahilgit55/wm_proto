@@ -11,6 +11,8 @@ from asyncio import sleep as asynciosleep
 from pyrogram.errors import FloodWait
 from helper_fns.process import append_master_process, remove_master_process, get_master_process, append_sub_process, remove_sub_process, get_sub_process
 from os.path import getsize
+from os import execl
+from sys import argv, executable
 
 
 ############Variables##############
@@ -717,7 +719,7 @@ async def watermark(client, message):
     if watermark_check:
                 text = f"🔶Watermark Already Present\n\nSend Me New Watermark To Replace.\n\n⌛Request TimeOut In 30 Secs"
     else:
-            text = f"🔷Watermark Not Present\n\nSend Me New Watermark To Save.\n\n⌛Request TimeOut In 30 Secs"
+            text = f"🔷Watermark Not Present\n\nSend Me Watermark To Save.\n\n⌛Request TimeOut In 30 Secs"
     try:
         ask = await client.ask(user_id, text, timeout=30, filters=(filters.document | filters.photo))
         wt = ask.id
@@ -725,7 +727,7 @@ async def watermark(client, message):
                 m = await client.get_messages(user_id, wt, replies=0)
                 await client.download_media(m, watermark_path)
                 await client.send_message(chat_id=user_id,
-                                text=f"✅Thumbnail Saved Successfully")
+                                text=f"✅Watermark Saved Successfully")
         else:
                 await client.send_message(chat_id=user_id,
                                         text=f"❗Invalid Media")
@@ -756,3 +758,14 @@ async def renew(_, message):
                     quote=True,
                 )
                 return
+    else:
+           await message.reply_text("❌Not Authorized", True)
+           return
+        
+#########Restart Bot###########
+@Client.on_message(filters.command("restart"))
+async def restart(_, message):
+    userx = message.from_user.id
+    if userx in sudo_users:
+        await message.reply_text("♻Restarting...", True)
+        execl(executable, executable, *argv)
