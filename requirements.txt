@@ -8,3 +8,4 @@ pymongo==4.3.3
 python-dotenv==0.21.0
 hachoir
 humanfriendly
+psutil

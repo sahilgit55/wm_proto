@@ -8,6 +8,7 @@ from asyncio import get_event_loop
 from os.path import exists, isdir
 from subprocess import PIPE as subprocessPIPE, STDOUT as subprocessSTDOUT
 from subprocess import run as subprocessrun
+from psutil import disk_usage, cpu_percent,virtual_memory
 
 
 db = Database()
@@ -213,3 +214,24 @@ async def clear_trash_list(trash_list):
                 remove(t)
             except:
                 pass
+            
+######Bot Stats###########
+def get_stats():
+        total, used, free, disk = disk_usage('/')
+        memory = virtual_memory()
+        stats =f'🚀CPU Usage: {cpu_percent(interval=0.5)}%\n'\
+                    f'⚡RAM Usage: {memory.percent}%\n'\
+                    f'🚛Total Space: {get_human_size(total)}\n'\
+                    f'🧡Free Space: {get_human_size(free)}\n'\
+                    f'🚂Total Ram: {get_human_size(memory.total)}\n'\
+                    f'⚓Free Ram: {get_human_size(memory.available)}'
+        return stats
+    
+
+#########check file########
+
+async def check_filex(file):
+    if exists(file):
+        return True
+    else:
+        return False

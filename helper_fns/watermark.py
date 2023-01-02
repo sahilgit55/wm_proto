@@ -1,19 +1,14 @@
-import os
-import math
-import re
-import json
-import time
-import asyncio
-from humanfriendly import format_timespan
-from helper_fns.helper import TimeFormatter
+from math import floor as mathfloor
+from re import findall as refindall
+from asyncio import create_subprocess_exec, create_task, FIRST_COMPLETED
+from asyncio import wait as asynciowait
+from asyncio.subprocess import PIPE as asyncioPIPE
 from pyrogram.errors.exceptions.flood_420 import FloodWait
-from asyncio import create_subprocess_shell
-from asyncio.subprocess import PIPE, STDOUT
-from helper_fns.helper import hrb, getbotuptime, Timer, timex, create_backgroud_task, get_readable_time, delete_trash, get_human_size
+from helper_fns.helper import getbotuptime, get_readable_time, delete_trash, get_human_size, get_stats, timex
 from asyncio import sleep as assleep
 from helper_fns.pbar import get_progress_bar_string
 from helper_fns.process import get_sub_process, get_master_process
-from os.path import getsize
+from os.path import getsize, lexists
 
 all_data = []
 msg_data = ['Processing']
@@ -24,7 +19,7 @@ wpositions = {'5:5': 'Top Left', 'main_w-overlay_w-5:5': 'Top Right', '5:main_h-
 #############Checker################
 async def check_task(tid, pid, process_id):
     while True:
-        await asyncio.sleep(1)
+        await assleep(1)
         if tid not in get_sub_process():
             Cancel = True
             print("🔶Task Cancelled Checker")
@@ -77,6 +72,11 @@ async def update_message(working_dir, COMPRESSION_START_TIME, total_time, mode,m
     ptype = datam[3]
     stime = datam[4]
     mtime = datam[5]
+    failed = datam[6]
+    cancelled = datam[7]
+    wfailed = datam[8]
+    mfailed = datam[9]
+    fstats = f"❗Failed: {str(failed)}\n🚫Cancelled: {str(cancelled)}\n🤒FWatermark: {str(wfailed)}\n😬FMuxing: {str(mfailed)}"
     muxing = ['HardMux']
     Cancel = False
     infilesize = get_human_size(getsize(incoming))
@@ -106,12 +106,12 @@ async def update_message(working_dir, COMPRESSION_START_TIME, total_time, mode,m
                 break
             with open(working_dir, 'r+') as file:
                                     text = file.read()
-                                    frame = re.findall("frame=(\d+)", text)
-                                    time_in_us=re.findall("out_time_ms=(\d+)", text)
-                                    bitrate = re.findall("bitrate=(\d+)", text)
-                                    fps = re.findall("fps=(\d+)", text)
-                                    progress=re.findall("progress=(\w+)", text)
-                                    speed=re.findall("speed=(\d+\.?\d*)", text)
+                                    frame = refindall("frame=(\d+)", text)
+                                    time_in_us=refindall("out_time_ms=(\d+)", text)
+                                    bitrate = refindall("bitrate=(\d+)", text)
+                                    fps = refindall("fps=(\d+)", text)
+                                    progress=refindall("progress=(\w+)", text)
+                                    speed=refindall("speed=(\d+\.?\d*)", text)
                                     if len(frame):
                                         frame = int(frame[-1])
                                     else:
@@ -135,12 +135,12 @@ async def update_message(working_dir, COMPRESSION_START_TIME, total_time, mode,m
                                         fps = fps[-1].strip()
                                     else:
                                         fps = "0"
-                                    execution_time = get_readable_time(time.time() - COMPRESSION_START_TIME)
-                                    sptime = get_readable_time(time.time() - stime)
-                                    mptime = get_readable_time(time.time() - mtime)
+                                    execution_time = get_readable_time(timex() - COMPRESSION_START_TIME)
+                                    sptime = get_readable_time(timex() - stime)
+                                    mptime = get_readable_time(timex() - mtime)
                                     elapsed_time = int(time_in_us)/1000000
                                     out_time = get_readable_time(elapsed_time)
-                                    difference = math.floor( (total_time - elapsed_time) / float(speed) )
+                                    difference = mathfloor( (total_time - elapsed_time) / float(speed) )
                                     ETA = "-"
                                     if difference > 0:
                                         ETA = get_readable_time(difference)
@@ -153,13 +153,13 @@ async def update_message(working_dir, COMPRESSION_START_TIME, total_time, mode,m
                                         logs = msg_data[-1]
                                     if len(logs)>3800:
                                         logs = msg_data[-1]
-                                    pro_bar = f"{str(ptype)} ({opt})\n🎟️File: {name}\n🧶Remaining: {str(remnx)}\n{str(position)}\n♒Preset: {mode}\n🧭Duration: {get_readable_time(total_time)}\n💽In Size: {str(infilesize)}\n\n\n{progressx}\n\n ┌ 𝙿𝚛𝚘𝚐𝚛𝚎𝚜𝚜:【 {perc} 】\n ├ 𝚂𝚙𝚎𝚎𝚍:【 {speed}x 】\n ├ 𝙱𝚒𝚝𝚛𝚊𝚝𝚎:【 {bitrate}kbits/s 】\n ├ 𝙵𝙿𝚂:【 {fps} 】\n ├ 𝚁𝚎𝚖𝚊𝚒𝚗𝚒𝚗𝚐:【 {get_readable_time((total_time - elapsed_time))} 】\n └ 𝙿𝚛𝚘𝚌𝚎𝚜𝚜𝚎𝚍:【 {str(out_time)} 】\n\n\n⚡️●●●● 𝙿𝚛𝚘𝚌𝚎𝚜𝚜 ●●●●⚡️\n\n⚙{str(logs)}\n\n\n💾Ot Size: {str(get_human_size(getsize(out_file)))}\n⏰️ETA: {ETA}\n⛓Ex Time: {str(execution_time)}\n🔸Sp Time: {str(sptime)}\n🔹Mp Time: {str(mptime)}\n♥️Bot Uptime: {str(botupt)}\n{str(ctext)}\n{str(ptext)}"
+                                    pro_bar = f"{str(ptype)} ({opt})\n🎟️File: {name}\n🧶Remaining: {str(remnx)}\n{str(position)}\n♒Preset: {mode}\n🧭Duration: {get_readable_time(total_time)}\n💽In Size: {str(infilesize)}\n\n\n{progressx}\n\n ┌ 𝙿𝚛𝚘𝚐𝚛𝚎𝚜𝚜:【 {perc} 】\n ├ 𝚂𝚙𝚎𝚎𝚍:【 {speed}x 】\n ├ 𝙱𝚒𝚝𝚛𝚊𝚝𝚎:【 {bitrate}kbits/s 】\n ├ 𝙵𝙿𝚂:【 {fps} 】\n ├ 𝚁𝚎𝚖𝚊𝚒𝚗𝚒𝚗𝚐:【 {get_readable_time((total_time - elapsed_time))} 】\n └ 𝙿𝚛𝚘𝚌𝚎𝚜𝚜𝚎𝚍:【 {str(out_time)} 】\n\n\n⚡️●●●● 𝙿𝚛𝚘𝚌𝚎𝚜𝚜 ●●●●⚡️\n\n⚙{str(logs)}\n\n\n💾Ot Size: {str(get_human_size(getsize(out_file)))}\n⏰️ETA: {ETA}\n⛓Ex Time: {str(execution_time)}\n{str(get_stats())}\n🔸SP Time: {str(sptime)}\n🔹MP Time: {str(mptime)}\n♥️Bot Uptime: {str(botupt)}\n{str(fstats)}\n{str(ctext)}\n{str(ptext)}"
                                     if txt!=pro_bar:
                                             txt=pro_bar
                                             try:
                                                 await message.edit(text=pro_bar)
                                             except FloodWait as e:
-                                                await asyncio.sleep(e.value)
+                                                await assleep(e.value)
                                             except Exception as e:
                                                 print(e)
     return Cancel
@@ -169,7 +169,7 @@ async def update_message(working_dir, COMPRESSION_START_TIME, total_time, mode,m
 async def take_screen_shot(video_file, output_directory, ttl):
     # https://stackoverflow.com/a/13891070/4723940
     out_put_file_name = output_directory + \
-        "/" + str(time.time()) + ".jpg"
+        "/" + str(timex()) + ".jpg"
     file_genertor_command = [
         "ffmpeg",
         "-ss",
@@ -181,17 +181,17 @@ async def take_screen_shot(video_file, output_directory, ttl):
         out_put_file_name
     ]
     # width = "90"
-    process = await asyncio.create_subprocess_exec(
+    process = await create_subprocess_exec(
         *file_genertor_command,
         # stdout must a pipe to be accessible as process.stdout
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
+        stdout=asyncioPIPE,
+        stderr=asyncioPIPE,
     )
     # Wait for the subprocess to finish
     stdout, stderr = await process.communicate()
     e_response = stderr.decode().strip()
     t_response = stdout.decode().strip()
-    if os.path.lexists(out_put_file_name):
+    if lexists(out_put_file_name):
         return out_put_file_name
     else:
         return None
@@ -204,26 +204,27 @@ async def vidmarkx(the_media, msg, working_dir, watermark_path, output_vid, tota
     Cancel = False
     all_data = []
     msg_data = ['Processing']
-    COMPRESSION_START_TIME = time.time()
+    COMPRESSION_START_TIME = timex()
     command = [
         "ffmpeg", "-hide_banner", "-progress", working_dir, "-i", the_media, "-i", watermark_path,
         "-filter_complex", f"[1][0]scale2ref=w='iw*{size}/100':h='ow/mdar'[wm][vid];[vid][wm]overlay={position}", "-preset", mode, "-codec:a", "copy", output_vid
     ]
-    process = await asyncio.create_subprocess_exec(
+    process = await create_subprocess_exec(
             *command,
             # stdout must a pipe to be accessible as process.stdout
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            stdout=asyncioPIPE,
+            stderr=asyncioPIPE,
             )
     pid = process.pid
     running_process.append(pid)
-    task = asyncio.create_task(check_task(subprocess_id, pid, process_id))
-    log_task = asyncio.create_task(get_logs(process.stderr,subprocess_id, pid, process_id))
-    update_msg = asyncio.create_task(update_message(working_dir, COMPRESSION_START_TIME, total_time, mode, msg, position, pid, datam, the_media, output_vid, subprocess_id, process_id))
-    done, pending = await asyncio.wait([task, process.wait()], return_when=asyncio.FIRST_COMPLETED)
+    task = create_task(check_task(subprocess_id, pid, process_id))
+    log_task = create_task(get_logs(process.stderr,subprocess_id, pid, process_id))
+    update_msg = create_task(update_message(working_dir, COMPRESSION_START_TIME, total_time, mode, msg, position, pid, datam, the_media, output_vid, subprocess_id, process_id))
+    done, pending = await asynciowait([task, process.wait()], return_when=FIRST_COMPLETED)
     print("🔶WaterMark Process Completed")
     return_code = process.returncode
     running_process.remove(pid)
+    await delete_trash(working_dir)
     print("🔶HardMuxing Return Code", return_code)
     if task not in pending:
                 try:
@@ -264,8 +265,12 @@ async def vidmarkx(the_media, msg, working_dir, watermark_path, output_vid, tota
                 Cancel = True
                 print("🔶Task Cancelled Watermark")
     if Cancel:
+        all_data = []
+        msg_data = ['Processing']
         return [True, True]
     elif return_code == 0:
+        all_data = []
+        msg_data = ['Processing']
         return [True, False]
     else:
         return [False, all_data]
@@ -279,7 +284,7 @@ async def hardmux_vidx(vid_filename, sub_filename, output, msg, subprocess_id, p
     Cancel = False
     all_data = []
     msg_data = ['Processing']
-    COMPRESSION_START_TIME = time.time()
+    COMPRESSION_START_TIME = timex()
     command = [
             'ffmpeg','-hide_banner',
             '-progress', progress, '-i', vid_filename,
@@ -289,21 +294,22 @@ async def hardmux_vidx(vid_filename, sub_filename, output, msg, subprocess_id, p
             '-preset', preset,
             '-c:a','copy', output
             ]
-    process = await asyncio.create_subprocess_exec(
+    process = await create_subprocess_exec(
             *command,
             # stdout must a pipe to be accessible as process.stdout
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            stdout=asyncioPIPE,
+            stderr=asyncioPIPE,
             )
     pid = process.pid
     running_process.append(pid)
-    task = asyncio.create_task(check_task(subprocess_id, pid, process_id))
-    log_task = asyncio.create_task(get_logs(process.stderr,subprocess_id, pid, process_id))
-    update_msg = asyncio.create_task(update_message(progress, COMPRESSION_START_TIME, duration, preset, msg, 'HardMux', pid, datam, vid_filename, output, subprocess_id, process_id))
-    done, pending = await asyncio.wait([task, process.wait()], return_when=asyncio.FIRST_COMPLETED)
+    task = create_task(check_task(subprocess_id, pid, process_id))
+    log_task = create_task(get_logs(process.stderr,subprocess_id, pid, process_id))
+    update_msg = create_task(update_message(progress, COMPRESSION_START_TIME, duration, preset, msg, 'HardMux', pid, datam, vid_filename, output, subprocess_id, process_id))
+    done, pending = await asynciowait([task, process.wait()], return_when=FIRST_COMPLETED)
     print("🔶HardMuxing Process Completed")
     return_code = process.returncode
     running_process.remove(pid)
+    await delete_trash(progress)
     print("🔶HardMuxing Return Code", return_code)
     if task not in pending:
                 try:
@@ -344,8 +350,12 @@ async def hardmux_vidx(vid_filename, sub_filename, output, msg, subprocess_id, p
                 Cancel = True
                 print("🔶Task Cancelled HardMuxing")
     if Cancel:
+        all_data = []
+        msg_data = ['Processing']
         return [True, True]
     if return_code == 0:
+        all_data = []
+        msg_data = ['Processing']
         return [True, False]
     else:
         return [False, all_data]
@@ -361,7 +371,7 @@ async def softmux_vidx(vid_filename, sub_filename, output, msg, subprocess_id, p
     Cancel = False
     all_data = []
     msg_data = ['Processing']
-    COMPRESSION_START_TIME = time.time()
+    COMPRESSION_START_TIME = timex()
     command = [
             'ffmpeg','-hide_banner',
             '-progress', progress, '-i', vid_filename,
@@ -374,21 +384,22 @@ async def softmux_vidx(vid_filename, sub_filename, output, msg, subprocess_id, p
             '-y',output
             ]
 
-    process = await asyncio.create_subprocess_exec(
+    process = await create_subprocess_exec(
             *command,
             # stdout must a pipe to be accessible as process.stdout
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            stdout=asyncioPIPE,
+            stderr=asyncioPIPE,
             )
     pid = process.pid
     running_process.append(pid)
-    task = asyncio.create_task(check_task(subprocess_id, pid, process_id))
-    log_task = asyncio.create_task(get_logs(process.stderr,subprocess_id, pid, process_id))
-    update_msg = asyncio.create_task(update_message(progress, COMPRESSION_START_TIME, duration, preset, msg, 'SoftMux', pid, datam, vid_filename, output, subprocess_id, process_id))
-    done, pending = await asyncio.wait([task, process.wait()], return_when=asyncio.FIRST_COMPLETED)
+    task = create_task(check_task(subprocess_id, pid, process_id))
+    log_task = create_task(get_logs(process.stderr,subprocess_id, pid, process_id))
+    update_msg = create_task(update_message(progress, COMPRESSION_START_TIME, duration, preset, msg, 'SoftMux', pid, datam, vid_filename, output, subprocess_id, process_id))
+    done, pending = await asynciowait([task, process.wait()], return_when=FIRST_COMPLETED)
     print("🔶SoftMuxing Process Completed")
     return_code = process.returncode
     running_process.remove(pid)
+    await delete_trash(progress)
     print("🔶SoftMuxing Return Code", return_code)
     if task not in pending:
                 try:
@@ -429,8 +440,12 @@ async def softmux_vidx(vid_filename, sub_filename, output, msg, subprocess_id, p
                 Cancel = True
                 print("🔶Task Cancelled SoftMuxing")
     if Cancel:
+        all_data = []
+        msg_data = ['Processing']
         return [True, True]
     if return_code == 0:
+        all_data = []
+        msg_data = ['Processing']
         return [True, False]
     else:
         return [False, all_data]
@@ -444,7 +459,7 @@ async def softremove_vidx(vid_filename, sub_filename, output, msg, subprocess_id
     Cancel = False
     all_data = []
     msg_data = ['Processing']
-    COMPRESSION_START_TIME = time.time()
+    COMPRESSION_START_TIME = timex()
     command = [
             'ffmpeg','-hide_banner',
             '-progress', progress, '-i', vid_filename,
@@ -459,21 +474,22 @@ async def softremove_vidx(vid_filename, sub_filename, output, msg, subprocess_id
             '-y',output
             ]
 
-    process = await asyncio.create_subprocess_exec(
+    process = await create_subprocess_exec(
             *command,
             # stdout must a pipe to be accessible as process.stdout
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            stdout=asyncioPIPE,
+            stderr=asyncioPIPE,
             )
     pid = process.pid
     running_process.append(pid)
-    task = asyncio.create_task(check_task(subprocess_id, pid, process_id))
-    log_task = asyncio.create_task(get_logs(process.stderr,subprocess_id, pid, process_id))
-    update_msg = asyncio.create_task(update_message(progress, COMPRESSION_START_TIME, duration, preset, msg, 'Softremove', pid, datam, vid_filename, output, subprocess_id, process_id))
-    done, pending = await asyncio.wait([task, process.wait()], return_when=asyncio.FIRST_COMPLETED)
+    task = create_task(check_task(subprocess_id, pid, process_id))
+    log_task = create_task(get_logs(process.stderr,subprocess_id, pid, process_id))
+    update_msg = create_task(update_message(progress, COMPRESSION_START_TIME, duration, preset, msg, 'Softremove', pid, datam, vid_filename, output, subprocess_id, process_id))
+    done, pending = await asynciowait([task, process.wait()], return_when=FIRST_COMPLETED)
     print("🔶SoftremoveMuxing Process Completed")
     return_code = process.returncode
     running_process.remove(pid)
+    await delete_trash(progress)
     print("🔶SoftremoveMuxing Return Code", return_code)
     if task not in pending:
                 try:
@@ -514,8 +530,12 @@ async def softremove_vidx(vid_filename, sub_filename, output, msg, subprocess_id
                 Cancel = True
                 print("🔶Task Cancelled SoftremoveMuxing")
     if Cancel:
+        all_data = []
+        msg_data = ['Processing']
         return [True, True]
     if return_code == 0:
+        all_data = []
+        msg_data = ['Processing']
         return [True, False]
     else:
         return [False, all_data]

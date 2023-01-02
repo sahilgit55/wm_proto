@@ -15,7 +15,9 @@ app = Client(
 
 if __name__ == "__main__":
     app.start()
-    Config.USER.start()
+    User = Config.USER.start()
+    first_name = User.get_me().first_name
+    print(f'🔒User Session For {first_name} Started Successfully!🔒')
     uname = app.get_me().username
     print(f'✅@{uname} Started Successfully!✅')
     print(f"⚡Bot By Sahil Nolia⚡")

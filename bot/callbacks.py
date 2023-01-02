@@ -1,7 +1,7 @@
-from pyrogram import Client, filters
+from pyrogram import Client
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import Config
-from helper_fns.helper import USER_DATA, saveconfig
+from helper_fns.helper import USER_DATA, saveconfig, check_filex
 
 
 ############Variables##############
@@ -100,6 +100,13 @@ async def newbt(client, callback_query):
                     keyboard = InlineKeyboardButton(datam, callback_data=f'mpreset_{str(pp)}')
                     MP.append(keyboard)
                 KeyBoard.append(MP)
+                watermark_path = f'./{str(userx)}_watermark.jpg'
+                watermark_check = await check_filex(watermark_path)
+                if watermark_check:
+                        key = [InlineKeyboardButton(f"🔶Watermark - Found✅🔶", callback_data="lol-water")]
+                else:
+                        key = [InlineKeyboardButton(f"🔶Watermark - Not Found❌🔶", callback_data="lol-water")]
+                KeyBoard.append(key)
                 try:
                     await callback_query.message.edit(
                         text="Settings",
@@ -110,8 +117,20 @@ async def newbt(client, callback_query):
                 return
     
         elif txt.startswith("lol"):
-            await callback_query.answer(
-                        f'⚡Nik66Bots⚡',
-                        show_alert=True
-                    )
+            data = txt.split('-')
+            keyx = data[1]
+            if keyx=='water':
+                watermark_path = f'./{str(userx)}_watermark.jpg'
+                try:
+                    await client.send_document(chat_id=user_id, document=watermark_path, caption=f"Nik66Bots")
+                except:
+                    await callback_query.answer(
+                                f'⚡Nik66Bots⚡',
+                                show_alert=True
+                            )
+            else:
+                await callback_query.answer(
+                                f'⚡Nik66Bots⚡',
+                                show_alert=True
+                            )
             return
