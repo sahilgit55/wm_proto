@@ -5,6 +5,7 @@ from config import botStartTime
 from os import remove
 from shutil import rmtree
 from asyncio import get_event_loop
+from os.path import exists
 
 
 db = Database()
@@ -173,3 +174,12 @@ async def delete_all(dir):
 async def create_backgroud_task(x):
     task = get_event_loop().create_task(x)
     return task
+
+
+#########Process FFmpeg##########
+
+async def create_process_file(file):
+    if exists(file):
+        remove(file)
+    with open(file, 'w') as fp:
+            pass

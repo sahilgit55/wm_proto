@@ -2,7 +2,7 @@ from pyrogram import Client,  filters
 from time import time
 from config import Config
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from helper_fns.helper import get_readable_time, saveconfig, deleteconfig, USER_DATA, get_media, timex, delete_all, delete_trash, new_user
+from helper_fns.helper import get_readable_time, saveconfig, deleteconfig, USER_DATA, get_media, timex, delete_all, delete_trash, new_user, create_process_file
 from helper_fns.pbar import progress_bar
 from config import botStartTime
 from hachoir.metadata import extractMetadata
@@ -265,13 +265,15 @@ async def process(bot, message):
                                         duration = metadata.get('duration').seconds
                                 output_vid = f"./{str(file_name)}"
                                 progress = f"./{str(file_name)}_progress.txt"
+                                await create_process_file(progress)
+                                await delete_trash(output_vid)
                                 watermark_path = f'./watermark.jpg'
                                 preset = 'ultrafast'
                                 watermark_position = "5:5"
                                 watermark_size = "7"
-                                datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🧿Adding Watermark')
+                                datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🛺Adding Watermark', stime, mtime)
                                 try:
-                                        output_vid_res = await vidmarkx(the_media, reply, progress, watermark_path, output_vid, duration, preset, watermark_position, watermark_size, datam, subprocess_id)
+                                        output_vid_res = await vidmarkx(the_media, reply, progress, watermark_path, output_vid, duration, preset, watermark_position, watermark_size, datam,subprocess_id, process_id)
                                 except Exception as err:
                                         await reply.edit(f"❗Unable to add Watermark!\n\n{str(err)}\n\n{str(data)}")
                                         await delete_all("./RAW")
@@ -302,6 +304,7 @@ async def process(bot, message):
                                                 sub_mode = data['smode']
                                                 datam = (file_name, f"{str(countx)}/{str(limit_to-limit)}", remnx, '🎮Remuxing Subtitles', stime, mtime)
                                                 remux_preset =  'ultrafast'
+                                                await create_process_file(progress)
                                                 if sub_mode=="softremove":
                                                         output_vid = await softremove_vid(output_vid, sub_loc, reply)
                                                 elif sub_mode=="softmux":

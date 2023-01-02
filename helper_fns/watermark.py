@@ -149,7 +149,7 @@ async def update_message(working_dir, COMPRESSION_START_TIME, total_time, mode,m
                                         logs = msg_data[-1]
                                     if len(logs)>3800:
                                         logs = msg_data[-1]
-                                    pro_bar = f"{str(ptype)} ({opt})\n🎟️File: {name}\n🧶Remaining: {str(remnx)}\n{str(position)}\n♒Preset: {mode}\n🧭Duration: {get_readable_time(total_time)}\n💽In Size: {str(infilesize)}\n\n\n{progressx}\n\n ┌ 𝙿𝚛𝚘𝚐𝚛𝚎𝚜𝚜:【 {perc} 】\n ├ 𝚂𝚙𝚎𝚎𝚍:【 {speed}x 】\n ├ 𝙱𝚒𝚝𝚛𝚊𝚝𝚎:【 {bitrate} kbits/s 】\n ├ 𝙵𝙿𝚂:【 {fps} 】\n ├ 𝚁𝚎𝚖𝚊𝚒𝚗𝚒𝚗𝚐:【 {get_readable_time((total_time - elapsed_time))} 】\n └ 𝙿𝚛𝚘𝚌𝚎𝚜𝚜𝚎𝚍:【 {str(out_time)} 】\n\n\n⚡️●●●● 𝙿𝚛𝚘𝚌𝚎𝚜𝚜 ●●●●⚡️\n\n⚙{str(logs)}\n\n\n💾Ot Size: {str(get_human_size(getsize(out_file)))}\n⏰️ETA: {ETA}\n⛓Ex Time: {str(execution_time)}\n🔸Sp Time: {str(sptime)}\n🔹Mp Time: {str(mptime)}♥️Bot Uptime: {str(botupt)}\n{str(ctext)}\n{str(ptext)}"
+                                    pro_bar = f"{str(ptype)} ({opt})\n🎟️File: {name}\n🧶Remaining: {str(remnx)}\n{str(position)}\n♒Preset: {mode}\n🧭Duration: {get_readable_time(total_time)}\n💽In Size: {str(infilesize)}\n\n\n{progressx}\n\n ┌ 𝙿𝚛𝚘𝚐𝚛𝚎𝚜𝚜:【 {perc} 】\n ├ 𝚂𝚙𝚎𝚎𝚍:【 {speed}x 】\n ├ 𝙱𝚒𝚝𝚛𝚊𝚝𝚎:【 {bitrate} kbits/s 】\n ├ 𝙵𝙿𝚂:【 {fps} 】\n ├ 𝚁𝚎𝚖𝚊𝚒𝚗𝚒𝚗𝚐:【 {get_readable_time((total_time - elapsed_time))} 】\n └ 𝙿𝚛𝚘𝚌𝚎𝚜𝚜𝚎𝚍:【 {str(out_time)} 】\n\n\n⚡️●●●● 𝙿𝚛𝚘𝚌𝚎𝚜𝚜 ●●●●⚡️\n\n⚙{str(logs)}\n\n\n💾Ot Size: {str(get_human_size(getsize(out_file)))}\n⏰️ETA: {ETA}\n⛓Ex Time: {str(execution_time)}\n🔸Sp Time: {str(sptime)}\n🔹Mp Time: {str(mptime)}\n♥️Bot Uptime: {str(botupt)}\n{str(ctext)}\n{str(ptext)}"
                                     if txt!=pro_bar:
                                             txt=pro_bar
                                             try:
@@ -232,7 +232,7 @@ async def take_screen_shot(video_file, output_directory, ttl):
 
 
 ######################WaterMark2#############################
-async def vidmarkx(the_media, msg, working_dir, watermark_path, output_vid, total_time, mode, position, size, datam, subprocess_id):
+async def vidmarkx(the_media, msg, working_dir, watermark_path, output_vid, total_time, mode, position, size, datam, subprocess_id, process_id):
     global all_data
     global msg_data
     all_data = []
@@ -250,32 +250,44 @@ async def vidmarkx(the_media, msg, working_dir, watermark_path, output_vid, tota
             )
     pid = process.pid
     running_process.append(pid)
-    task = asyncio.create_task(check_task(subprocess_id, pid))
-    log_task = asyncio.create_task(get_logs(process.stderr,subprocess_id, pid))
-    update_msg = asyncio.create_task(update_message(working_dir, COMPRESSION_START_TIME, total_time, mode, msg, position, pid, datam, the_media, output_vid, subprocess_id))
+    task = asyncio.create_task(check_task(subprocess_id, pid, process_id))
+    log_task = asyncio.create_task(get_logs(process.stderr,subprocess_id, pid, process_id))
+    update_msg = asyncio.create_task(update_message(working_dir, COMPRESSION_START_TIME, total_time, mode, msg, position, pid, datam, the_media, output_vid, subprocess_id, process_id))
     done, pending = await asyncio.wait([task, process.wait()], return_when=asyncio.FIRST_COMPLETED)
     print("🔶WaterMark Process Completed")
     return_code = process.returncode
     running_process.remove(pid)
+    print("🔶HardMuxing Return Code", return_code)
     if task not in pending:
                 try:
+                        print("🔶Terminating Process")
                         process.terminate()
+                        print("🔶Process Terminated")
                 except Exception as e:
                         print(e)
     else:
                 try:
+                        print("🔶Cancelling Task")
                         task.cancelled()
+                        print("🔶Awaiting Task")
                         await task
+                        print("🔶Checker Task Cancelled")
                 except Exception as e:
                         print(e)
     try:
+            print("🔶Cancelling Message Updater")
             update_msg.cancelled()
+            print("🔶Awaiting Message Updater")
             await update_msg
+            print("🔶Message Updater Cancelled")
     except Exception as e:
             print(e)
     try:
+            print("🔶Cancelling Logger")
             log_task.cancelled()
+            print("🔶Awaiting Logger")
             await log_task
+            print("🔶Logger Cancelled")
     except Exception as e:
             print(e)
     if return_code == 0:
